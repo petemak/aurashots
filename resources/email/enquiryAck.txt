@@ -1,0 +1,7 @@
+Subject: We have received your message to Aura Shots
+
+Hello {{name}},
+
+Thank you for getting in touch. We have received your message and will reply by email or WhatsApp.
+
+Aura Shots

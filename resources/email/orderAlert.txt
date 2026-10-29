@@ -1,0 +1,12 @@
+Subject: New merchandise order {{reference}} from {{customerName}}
+
+A new merchandise order has arrived.
+
+Reference: {{reference}}
+Customer: {{customerName}}, {{customerPhone}}, {{customerEmail}}
+Items:
+{{items}}
+Subtotal: {{subtotalRwf}} RwF
+Delivery to: {{deliveryAddress}}
+
+Open it in the admin: {{adminUrl}}

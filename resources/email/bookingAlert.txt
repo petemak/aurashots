@@ -1,0 +1,12 @@
+Subject: New session request {{reference}} from {{customerName}}
+
+A new session request has arrived.
+
+Reference: {{reference}}
+Customer: {{customerName}}, {{customerPhone}}, {{customerEmail}}
+Services:
+{{services}}
+Preferred date and time: {{requestedDate}} at {{requestedTime}}
+Notes: {{notes}}
+
+Open it in the admin: {{adminUrl}}

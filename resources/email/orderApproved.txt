@@ -1,0 +1,17 @@
+Subject: Your Aura Shots order is approved ({{reference}})
+
+Hello {{customerName}},
+
+Your order has been approved.
+
+Items:
+{{items}}
+Subtotal: {{subtotalRwf}} RwF
+Delivery fee: {{deliveryFeeRwf}} RwF
+Total: {{totalRwf}} RwF
+
+Payment is made in cash or mobile money. We will deliver to: {{deliveryAddress}}
+
+{{noteToCustomer}}
+
+Aura Shots

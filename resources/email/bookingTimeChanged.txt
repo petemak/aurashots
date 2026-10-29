@@ -1,0 +1,16 @@
+Subject: Your Aura Shots session has a new time ({{reference}})
+
+Hello {{customerName}},
+
+We have confirmed your session, but at a different time from the one you asked for.
+
+New date: {{date}}
+New start time: {{startTime}}
+Services:
+{{services}}
+
+{{noteToCustomer}}
+
+If this time does not suit you, please reply to this email or message us on WhatsApp.
+
+Aura Shots

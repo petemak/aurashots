@@ -1,0 +1,11 @@
+Subject: You have been invited to the Aura Shots admin
+
+Hello {{name}},
+
+You have been added as a support member of the Aura Shots team. Choose your password here:
+
+{{link}}
+
+The link can be used once and expires on {{expires}}.
+
+Aura Shots

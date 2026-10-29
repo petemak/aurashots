@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en-GB" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--@seo:begin-->
+<title>Aura Shots admin</title>
+<meta name="description" content="Staff area for Aura Shots: session requests, merchandise orders, services, portfolio, calendar and settings. Sign-in required.">
+<link rel="canonical" href="%%BASE_URL%%/admin">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Aura Shots">
+<meta property="og:title" content="Aura Shots admin">
+<meta property="og:description" content="Staff area for Aura Shots. Sign-in required.">
+<meta property="og:url" content="%%BASE_URL%%/admin">
+<meta property="og:image" content="%%BASE_URL%%/assets/favicon-512.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","name":"Aura Shots admin","description":"Staff area for Aura Shots. Sign-in required.","url":"%%BASE_URL%%/admin"}
+</script>
+<!--@seo:end-->
+<meta name="robots" content="noindex">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/favicon-180.png">
+<link rel="manifest" href="/assets/site.webmanifest">
+<link rel="stylesheet" href="/css/design-tokens.css">
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="is-guest">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="admin-header">
+  <button type="button" class="icon-btn admin-menu-toggle" id="admin-menu-toggle" aria-expanded="false" aria-controls="admin-nav" aria-label="Menu"><span class="icon icon--menu" aria-hidden="true"></span></button>
+  <a class="admin-brand" href="/admin"><img src="/assets/logo-ink.svg" alt="Aura Shots admin" width="545" height="320"></a>
+  <div class="admin-header__user" id="admin-user"></div>
+</header>
+<div class="admin-layout">
+  <nav class="admin-nav" id="admin-nav" aria-label="Admin menu"></nav>
+  <main id="main" class="admin-main">
+    <div class="admin-page-head">
+      <h1 id="admin-title">Aura Shots admin</h1>
+      <a class="btn btn--secondary" id="help-link" href="/admin/help" hidden><span class="icon icon--help icon--sm" aria-hidden="true"></span>How do I…?</a>
+    </div>
+    <div id="admin-content"><p>Loading…</p></div>
+    <noscript><p class="alert alert--warning">The admin area needs JavaScript.</p></noscript>
+  </main>
+</div>
+<aside class="help-drawer" id="help-drawer" role="dialog" aria-modal="false" aria-labelledby="help-drawer-title" hidden></aside>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<script src="/js/site-common.js" defer></script>
+<script src="/js/admin-help.js" defer></script>
+<script src="/js/admin-app.js" defer></script>
+</body>
+</html>

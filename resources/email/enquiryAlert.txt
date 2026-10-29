@@ -1,0 +1,9 @@
+Subject: New enquiry from {{name}}
+
+Someone sent a message through the contact form.
+
+From: {{name}}, {{email}}, {{phone}}
+
+{{message}}
+
+Open it in the admin: {{adminUrl}}

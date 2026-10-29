@@ -1,0 +1,11 @@
+Subject: About your Aura Shots session request ({{reference}})
+
+Hello {{customerName}},
+
+Thank you for your interest in Aura Shots. Unfortunately we are not able to take this request forward.
+
+{{reason}}
+
+You are welcome to send a new request for another date.
+
+Aura Shots

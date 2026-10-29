@@ -1,0 +1,15 @@
+Subject: We have received your Aura Shots order ({{reference}})
+
+Hello {{customerName}},
+
+Thank you for your order. This is not an approval yet: we will review it and contact you to confirm delivery and payment.
+
+Your reference: {{reference}}
+Items:
+{{items}}
+Subtotal: {{subtotalRwf}} RwF
+Delivery to: {{deliveryAddress}}
+Agreement accepted: {{agreementTitle}}, version {{agreementVersion}}
+
+Aura Shots
+Kanombe, Kigali, Rwanda

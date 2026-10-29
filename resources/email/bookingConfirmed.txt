@@ -1,0 +1,16 @@
+Subject: Your Aura Shots session is confirmed ({{reference}})
+
+Hello {{customerName}},
+
+Good news: your session is confirmed.
+
+Date: {{date}}
+Start time: {{startTime}}
+Services:
+{{services}}
+
+{{noteToCustomer}}
+
+Payment is made in cash or mobile money. If you need to change anything, please reply to this email or message us on WhatsApp.
+
+Aura Shots

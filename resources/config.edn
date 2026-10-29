@@ -1,0 +1,29 @@
+;; Aura Shots configuration (Aero). Profiles: dev, staging, prod, selected by APP_ENV (default dev).
+;; Secrets (SMTP_PASSWORD, TOKEN_PEPPER) come only from the environment via #env; nothing secret is written here.
+{:app-env #keyword #or [#env APP_ENV "dev"]
+
+ :http {:host #profile {:dev "localhost" :default "0.0.0.0"}
+        :port #long #or [#env PORT 8080]
+        :trusted-proxy-hops #long #or [#env TRUSTED_PROXY_HOPS 0]
+        :cookie-secure #boolean #or [#env COOKIE_SECURE #profile {:dev false :default true}]}
+
+ :public-base-url #or [#env PUBLIC_BASE_URL "http://localhost:8080"]
+ :data-dir #or [#env DATA_DIR "data"]
+ :upload-dir #env UPLOAD_DIR
+ :web-root #or [#env WEB_ROOT "dist/web"]
+ :backup-dir #env BACKUP_DIR
+
+ ;; Optional: when unset the site works, emails stay queued in the outbox.
+ :owner-email #env OWNER_EMAIL
+ :smtp {:host #or [#env SMTP_HOST "smtp.gmail.com"]
+        :port #long #or [#env SMTP_PORT 587]
+        :user #env SMTP_USER
+        :password #env SMTP_PASSWORD}
+
+ ;; Required in staging and prod; in dev a random value is generated and kept under data-dir.
+ :token-pepper #env TOKEN_PEPPER
+
+ :log-level #keyword #or [#env LOG_LEVEL #profile {:dev "debug" :default "info"}]
+ :seed-images-dir "business/images/shots"
+ :outbox-interval-ms 15000
+ :housekeeping-interval-ms 600000}

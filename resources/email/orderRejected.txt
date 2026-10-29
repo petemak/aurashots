@@ -1,0 +1,9 @@
+Subject: About your Aura Shots order ({{reference}})
+
+Hello {{customerName}},
+
+Thank you for your order. Unfortunately we cannot accept it.
+
+{{reason}}
+
+Aura Shots

@@ -1,0 +1,7 @@
+Subject: Your Aura Shots order has been delivered ({{reference}})
+
+Hello {{customerName}},
+
+Our records show that your order {{reference}} has been delivered. Thank you for shopping with Aura Shots.
+
+Aura Shots

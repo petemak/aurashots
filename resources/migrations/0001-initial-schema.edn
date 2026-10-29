@@ -1,0 +1,101 @@
+;; Initial schema. Indexed attributes carry a value type; ":data" attributes hold whole maps (nippy) and are not indexed.
+{:version 1
+ :description "Initial schema for all slices"
+ :schema
+ {:setting/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :setting/data {:db/noindex true}
+
+  :image/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :image/data {:db/noindex true}
+
+  :service/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :service/slug {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :service/status {:db/valueType :db.type/keyword}
+  :service/sortOrder {:db/valueType :db.type/long}
+  :service/imageRefs {:db/valueType :db.type/ref :db/cardinality :db.cardinality/many}
+  :service/data {:db/noindex true}
+
+  :product/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :product/slug {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :product/status {:db/valueType :db.type/keyword}
+  :product/category {:db/valueType :db.type/string}
+  :product/createdAt {:db/valueType :db.type/long}
+  :product/imageRefs {:db/valueType :db.type/ref :db/cardinality :db.cardinality/many}
+  :product/data {:db/noindex true}
+
+  :portfolio/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :portfolio/sortOrder {:db/valueType :db.type/long}
+  :portfolio/image {:db/valueType :db.type/ref}
+  :portfolio/categoryId {:db/valueType :db.type/string}
+  :portfolio/featured {:db/valueType :db.type/boolean}
+  :portfolio/data {:db/noindex true}
+
+  :block/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :block/date {:db/valueType :db.type/string}
+  :block/data {:db/noindex true}
+
+  :booking/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :booking/reference {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :booking/status {:db/valueType :db.type/keyword}
+  :booking/createdAt {:db/valueType :db.type/long}
+  :booking/tokenHash {:db/valueType :db.type/string}
+  :booking/confirmedDate {:db/valueType :db.type/string}
+  :booking/preferredDate {:db/valueType :db.type/string}
+  :booking/data {:db/noindex true}
+
+  :order/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :order/reference {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :order/status {:db/valueType :db.type/keyword}
+  :order/createdAt {:db/valueType :db.type/long}
+  :order/tokenHash {:db/valueType :db.type/string}
+  :order/data {:db/noindex true}
+
+  :enquiry/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :enquiry/status {:db/valueType :db.type/keyword}
+  :enquiry/receivedAt {:db/valueType :db.type/long}
+  :enquiry/data {:db/noindex true}
+
+  :document/slug {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :document/data {:db/noindex true}
+  :docver/key {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :docver/slug {:db/valueType :db.type/string}
+  :docver/version {:db/valueType :db.type/long}
+  :docver/data {:db/noindex true}
+
+  :acceptance/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :acceptance/subjectReference {:db/valueType :db.type/string}
+  :acceptance/subjectId {:db/valueType :db.type/string}
+  :acceptance/data {:db/noindex true}
+
+  :message/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :message/status {:db/valueType :db.type/keyword}
+  :message/nextAttemptAt {:db/valueType :db.type/long}
+  :message/subjectId {:db/valueType :db.type/string}
+  :message/createdAt {:db/valueType :db.type/long}
+  :message/data {:db/noindex true}
+
+  :user/id {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :user/email {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :user/role {:db/valueType :db.type/keyword}
+  :user/data {:db/noindex true}
+
+  :session/hash {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :session/userId {:db/valueType :db.type/string}
+  :session/createdAt {:db/valueType :db.type/long}
+  :session/expiresAt {:db/valueType :db.type/long}
+  :session/lastSeenAt {:db/valueType :db.type/long}
+
+  :ptoken/hash {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :ptoken/userId {:db/valueType :db.type/string}
+  :ptoken/expiresAt {:db/valueType :db.type/long}
+  :ptoken/used {:db/valueType :db.type/boolean}
+
+  :idem/key {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :idem/createdAt {:db/valueType :db.type/long}
+  :idem/status {:db/valueType :db.type/keyword}
+  :idem/data {:db/noindex true}
+
+  :rate/bucket {:db/valueType :db.type/string :db/unique :db.unique/identity}
+  :rate/windowStart {:db/valueType :db.type/long}
+  :rate/count {:db/valueType :db.type/long}}
+ :steps []}

@@ -1,0 +1,34 @@
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="container site-header__bar">
+    <a class="site-header__logo" href="/"><img src="/assets/logo.svg" alt="Aura Shots, home" width="545" height="320"></a>
+    <nav class="site-nav" id="site-nav" aria-label="Main">
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/services">Services</a></li>
+        <li><a href="/portfolio">Portfolio</a></li>
+        <li><a href="/shop">Merchandise</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/contact">Contact</a></li>
+      </ul>
+    </nav>
+    <div class="site-header__tools">
+      <div class="basket-wrap">
+        <button type="button" class="icon-btn" id="toggle-sessions" aria-expanded="false" aria-controls="basket-panel" aria-label="Session basket">
+          <span class="icon icon--session-basket" aria-hidden="true"></span>
+          <span class="icon-btn__count" id="count-sessions" hidden>0</span>
+        </button>
+      </div>
+      <div class="basket-wrap">
+        <button type="button" class="icon-btn" id="toggle-bag" aria-expanded="false" aria-controls="basket-panel" aria-label="Merchandise bag">
+          <span class="icon icon--merchandise-bag" aria-hidden="true"></span>
+          <span class="icon-btn__count" id="count-bag" hidden>0</span>
+        </button>
+      </div>
+      <button type="button" class="icon-btn menu-toggle" id="menu-toggle" aria-expanded="false" aria-controls="site-nav" aria-label="Menu">
+        <span class="icon icon--menu" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+  <div class="container"><div class="basket-panel" id="basket-panel" role="region" aria-label="Your baskets" hidden></div></div>
+</header>

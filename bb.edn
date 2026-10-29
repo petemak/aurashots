@@ -1,0 +1,20 @@
+{:paths ["scripts"]
+ :tasks
+ {build-web {:doc "Build the frontend into dist/web (script owned by the frontend teammate)"
+             :task (shell "bb scripts/web/build.clj")}
+  dev {:doc "Start the backend in the dev profile (serves WEB_ROOT, default dist/web)"
+       :task (shell "clojure -M:run")}
+  create-owner {:doc "Create the owner account: bb create-owner --name \"Full Name\" --email owner@example.com"
+                :task (apply shell "clojure -M:dev -m aurashots.cli create-owner" *command-line-args*)}
+  backup {:doc "Write a database snapshot (stop the server first)"
+          :task (shell "clojure -M:dev -m aurashots.cli backup")}
+  export {:doc "Write a logical EDN export (stop the server first)"
+          :task (shell "clojure -M:dev -m aurashots.cli export")}
+  test {:doc "Run the backend tests"
+        :task (shell "clojure -M:test")}
+  lint {:doc "Lint src and test with clj-kondo"
+        :task (shell "clj-kondo --lint src test")}
+  check {:doc "Fitness checks: routes (F11), contract (F12), boundaries (F23/F24)"
+         :task (do (shell "bb scripts/check/routes.clj")
+                   (shell "bb scripts/check/contract.clj")
+                   (shell "bb scripts/check/boundaries.clj"))}}}

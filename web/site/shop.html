@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--@seo:begin-->
+<title>Merchandise – Clothing, Prints and Framed Art | Aura Shots</title>
+<meta name="description" content="Shop Aura Shots merchandise: clothing, photo prints and framed art. Order a request online, pay by cash or mobile money after approval. Prices in RwF.">
+<link rel="canonical" href="%%BASE_URL%%/shop">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Aura Shots">
+<meta property="og:locale" content="en_GB">
+<meta property="og:title" content="Merchandise – Clothing, Prints and Framed Art | Aura Shots">
+<meta property="og:description" content="Shop Aura Shots merchandise: clothing, photo prints and framed art. Order a request online, pay by cash or mobile money after approval. Prices in RwF.">
+<meta property="og:url" content="%%BASE_URL%%/shop">
+<meta property="og:image" content="%%BASE_URL%%/assets/favicon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Merchandise – Clothing, Prints and Framed Art | Aura Shots">
+<meta name="twitter:description" content="Shop Aura Shots merchandise: clothing, photo prints and framed art. Order a request online, pay by cash or mobile money after approval. Prices in RwF.">
+<meta name="twitter:image" content="%%BASE_URL%%/assets/favicon-512.png">
+<script type="application/ld+json">
+{
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "name": "Aura Shots merchandise",
+      "description": "Clothing, prints and framed art.",
+      "url": "%%BASE_URL%%/shop",
+      "isPartOf": {
+        "@type": "WebSite",
+        "name": "Aura Shots",
+        "url": "%%BASE_URL%%/"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "%%BASE_URL%%/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Merchandise",
+          "item": "%%BASE_URL%%/shop"
+        }
+      ]
+    }
+  ],
+  "@context": "https://schema.org"
+}
+</script>
+<!--@seo:end-->
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/assets/favicon-180.png">
+<link rel="manifest" href="/assets/site.webmanifest">
+<link rel="stylesheet" href="/css/design-tokens.css">
+<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/components.css">
+<link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+<!--@include:header-->
+<main id="main"><div class="container page-head">
+<nav class="breadcrumb" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li></ol></nav>
+<h1>Merchandise</h1>
+<p class="lead">Clothing, prints and framed art. Ordered separately from sessions.</p>
+</div>
+<section class="container" aria-label="Products">
+  <div class="row row--between">
+    <div class="chips" id="shop-filters" role="group" aria-label="Filter by category"></div>
+    <div class="field"><label for="shop-sort">Sort by</label>
+      <select class="select" id="shop-sort"><option value="newest">Newest</option><option value="priceAsc">Price: low to high</option><option value="priceDesc">Price: high to low</option></select></div>
+  </div>
+  <div id="product-list" aria-live="polite"><div class="grid grid--cards" aria-hidden="true"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div></div><noscript><div class="container"><p class="alert alert--warning">This page needs JavaScript to load its content.</p></div></noscript>
+</section>
+<section class="section"><div class="container"><div class="note-bar"><span class="icon icon--delivery" aria-hidden="true"></span><div><p><strong>How ordering works.</strong> Your order is a request until we approve it. After approval you pay by cash or mobile money, and we deliver within Rwanda.</p><p id="delivery-note" class="muted small">Delivery areas and fees: &lt;TBD&gt;</p></div></div></div></section>
+</main>
+<!--@include:footer-->
+<script src="/js/site-common.js" defer></script>
+<script src="/js/site/shop.js" defer></script>
+</body>
+</html>

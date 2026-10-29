@@ -1,0 +1,17 @@
+Subject: We have received your Aura Shots session request ({{reference}})
+
+Hello {{customerName}},
+
+Thank you for requesting a session with Aura Shots. This is not a confirmation yet: we will review your request and confirm the date and time with you by {{contactPreference}}.
+
+Your reference: {{reference}}
+Services:
+{{services}}
+Total: {{totalRwf}} RwF
+Preferred date and time: {{requestedDate}} at {{requestedTime}}
+Agreement accepted: {{agreementTitle}}, version {{agreementVersion}}
+
+Payment is made in cash or mobile money after we confirm your session.
+
+Aura Shots
+Kanombe, Kigali, Rwanda

@@ -1,0 +1,9 @@
+;; Seed content: settings, the six placeholder documents (drafts awaiting human review), the five services with the
+;; seed prices from business-context.md, the placeholder image and the six sample photos in the portfolio.
+;; Contains no secrets. The work is done by the named functions; every write is an upsert, so a re-run is harmless.
+{:version 2
+ :description "Seed settings, documents, services, placeholder image and sample portfolio"
+ :steps [{:fn aurashots.platform.migrations-seed/seed-settings}
+         {:fn aurashots.platform.migrations-seed/seed-documents}
+         {:fn aurashots.platform.migrations-seed/seed-images}
+         {:fn aurashots.platform.migrations-seed/seed-services}]}
