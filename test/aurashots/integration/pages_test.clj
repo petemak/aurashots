@@ -9,7 +9,7 @@
 
 (use-fixtures :once
   (fn [f]
-    (reset! env (h/start-system {:web-root (h/web-root-fixture)}))
+    (reset! env (h/start-system {:web-root (h/web-root-fixture) :config {:app-env :prod}}))
     (try (f) (finally (h/stop-system @env)))))
 
 (deftest ^{:doc "Tests home has live seo region."} home-has-live-seo-region
@@ -94,3 +94,40 @@
   (is (str/includes? (:body (call @env :get "/contact")) "<title>Contact Aura Shots | Kigali Photographer</title>"))
   (testing "HEAD works"
     (is (= 200 (:status (call @env :head "/"))))))
+
+(deftest ^{:doc "Tests that production keeps indexing."} production-allows-indexing
+  (is (not (contains? (:headers (call @env :get "/")) "X-Robots-Tag")))
+  (is (not (contains? (:headers (call @env :get "/services")) "X-Robots-Tag"))))
+
+(deftest ^{:doc "Tests staging robots, noindex header and production-only sitemap."} staging-is-not-indexable
+  (let [e (h/start-system {:web-root (h/web-root-fixture)
+                           :config {:app-env :staging :public-base-url "https://staging.example.test"
+                                    :production-base-url "https://www.example.test/"}})]
+    (try
+      (is (= "User-agent: *\nDisallow: /" (:body (call e :get "/robots.txt"))))
+      (doseq [p ["/" "/services" "/services/single-session" "/shop" "/about" "/contact" "/legal/privacy" "/nowhere" "/admin"]]
+        (is (= "noindex" (get-in (call e :get p) [:headers "X-Robots-Tag"])) p))
+      (let [s (:body (call e :get "/sitemap.xml"))]
+        (is (str/includes? s "<loc>https://www.example.test/services/single-session</loc>"))
+        (is (not (str/includes? s "staging.example.test"))))
+      (finally (h/stop-system e))))
+  (let [e (h/start-system {:web-root (h/web-root-fixture)
+                           :config {:app-env :staging :public-base-url "https://staging.example.test"}})]
+    (try
+      (let [s (:body (call e :get "/sitemap.xml"))]
+        (is (not (str/includes? s "<loc>")) "no production origin configured: nothing is listed")
+        (is (not (str/includes? s "staging.example.test"))))
+      (finally (h/stop-system e)))))
+
+(deftest ^{:doc "Tests the shared Open Graph image."} default-og-image
+  (let [home (:body (call @env :get "/"))
+        svc (:body (call @env :get "/services/single-session"))]
+    (doseq [b [home (:body (call @env :get "/contact")) (:body (call @env :get "/legal/privacy"))]]
+      (is (str/includes? b "<meta property=\"og:image\" content=\"http://localhost:8080/assets/og-image.png\">"))
+      (is (str/includes? b "og:image:width\" content=\"1200\""))
+      (is (str/includes? b "og:image:height\" content=\"630\""))
+      (is (str/includes? b "og:image:alt"))
+      (is (str/includes? b "<meta name=\"twitter:image\" content=\"http://localhost:8080/assets/og-image.png\">")))
+    (is (str/includes? home "\"image\":\"http://localhost:8080/assets/og-image.png\""))
+    (testing "service pages without a photo also fall back; with a photo they keep it"
+      (is (str/includes? svc "og:image")))))

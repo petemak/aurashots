@@ -66,3 +66,6 @@ ssr/.clj-kondo/.cache/
 # --- Aura Shots runtime and build output (architecture.md section 4) ---
 /data/
 /dist/
+
+# --- Python virtual environments (scripts/design/) ---
+.venv*/

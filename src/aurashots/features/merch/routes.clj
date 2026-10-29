@@ -6,6 +6,7 @@
             [aurashots.features.merch.core :as core]
             [aurashots.features.merch.store :as store]
             [aurashots.platform.http-core.response :as resp]
+            [aurashots.platform.http-core.response-schemas :as rs]
             [aurashots.platform.http-core.schemas :as s]
             [aurashots.shared.errors :as err]
             [aurashots.shared.refs :as refs]))
@@ -28,6 +29,28 @@
    [:isNew :boolean]
    [:featured :boolean]
    [:status [:enum "published" "hidden"]]))
+
+(def ^:private admin-image
+  "An image attached to a product in the admin record."
+  (rs/obj [:imageId rs/Id] [:alt :string] [:url :string] [:thumbUrl :string] [:width :int] [:height :int]))
+
+(def ^:private option-groups
+  "Option groups with option ids (api-contract.md section 3.6 body)."
+  [:vector (rs/obj [:name :string] [:options [:vector (rs/obj [:id rs/Id] [:label :string] [:inStock :boolean])]])])
+
+(def ^:private admin-product
+  "Full admin product record: the body fields plus id, slug, `createdAt`, the product-level `inStock` flag and the
+  derived `availability`."
+  (rs/obj [:id rs/Id] [:slug :string] [:name :string] [:category [:enum "clothing" "prints" "framed-art"]]
+          [:description :string] [:details :string] [:priceRwf rs/Money] [:optionGroups option-groups]
+          [:images [:vector admin-image]] [:isNew :boolean] [:featured :boolean] [:status [:enum "published" "hidden"]]
+          [:createdAt rs/Instant] [:inStock :boolean] [:availability [:enum "inStock" "soldOut"]]))
+
+(def ^:private admin-product-row
+  "A row of the admin product list."
+  (rs/obj [:id rs/Id] [:slug :string] [:name :string] [:category [:enum "clothing" "prints" "framed-art"]]
+          [:priceRwf rs/Money] [:status [:enum "published" "hidden" "removed"]] [:isNew :boolean] [:featured :boolean]
+          [:availability [:enum "inStock" "soldOut"]] [:mainImage (rs/maybe rs/Image)]))
 
 (defn- admin-record
   "Builds the admin product record: the stored fields with images expanded for editing."
@@ -74,6 +97,7 @@
                              [:sort {:optional true} [:enum "newest" "priceAsc" "priceDesc"]]
                              [:featured {:optional true} s/Bool]]
                             s/Pagination)}
+      :response {200 (rs/paginated rs/ProductSummary)}
       :handler (fn [{{{:keys [page pageSize] :as q} :query} :params}]
                  (resp/cached (resp/paginated (api/list-published conn q) page pageSize #(api/summary conn %))))}
      {:name :merch/admin-list :method :get :path "/api/admin/products" :roles staff
@@ -81,31 +105,36 @@
                              [:status {:optional true} [:enum "published" "hidden" "removed"]]
                              [:category {:optional true} categories]]
                             s/Pagination)}
+      :response {200 (rs/paginated admin-product-row)}
       :handler (fn [{{{:keys [page pageSize status category]} :query} :params}]
                  (let [ps (->> (store/list-by-status conn (if status [(keyword status)] [:published :hidden]))
                                (filter #(or (nil? category) (= category (:category %))))
                                (#(core/sort-products % "newest")))]
                    (resp/ok (resp/paginated ps page pageSize #(admin-list-item conn %)))))}
      {:name :merch/admin-get :method :get :path "/api/admin/products/:id" :roles staff :schema id-path
+      :response {200 admin-product}
       :handler (fn [{{{:keys [id]} :path} :params}]
                  (let [p (store/get-by-id conn id)]
                    (when (or (nil? p) (= :removed (:status p))) (err/fail! :notFound "That product does not exist."))
                    (resp/ok (admin-record conn p))))}
      {:name :merch/admin-create :method :post :path "/api/admin/products" :roles staff :schema {:body body-schema}
+      :response {201 admin-product}
       :handler (fn [{{body :body} :params}] (resp/created (admin-record conn (save-product! deps body nil))))}
      {:name :merch/admin-update :method :put :path "/api/admin/products/:id" :roles staff
-      :schema (assoc id-path :body body-schema)
+      :schema (assoc id-path :body body-schema) :response {200 admin-product}
       :handler (fn [{{{:keys [id]} :path body :body} :params}]
                  (let [p (store/get-by-id conn id)]
                    (when (or (nil? p) (= :removed (:status p))) (err/fail! :notFound "That product does not exist."))
                    (resp/ok (admin-record conn (save-product! deps body p)))))}
      {:name :merch/admin-delete :method :delete :path "/api/admin/products/:id" :roles staff :schema id-path
+      :response {204 rs/NoBody}
       :handler (fn [{{{:keys [id]} :path} :params}]
                  (let [p (store/get-by-id conn id)]
                    (when-not p (err/fail! :notFound "That product does not exist."))
                    (store/save! conn (assoc p :status :removed))
                    (resp/no-content)))}
      {:name :merch/availability :method :patch :path "/api/admin/products/:id/availability" :roles staff
+      :response {200 admin-product}
       :schema (assoc id-path :body (s/closed-map [:optionId {:optional true} [:maybe s/Id]] [:inStock :boolean]))
       :handler (fn [{{{:keys [id]} :path {:keys [optionId inStock]} :body} :params}]
                  (let [p (store/get-by-id conn id)]

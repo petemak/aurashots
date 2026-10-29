@@ -16,7 +16,9 @@
         reqs (some #(when (and (seq? %) (= :require (first %))) (rest %)) (drop 2 form))]
     (map (fn [r] (str (if (sequential? r) (first r) r))) reqs)))
 
-(def files (->> (file-seq (io/file "src")) (filter #(str/ends-with? (.getName %) ".clj"))))
+(def files
+  "Every .clj source file; editor lock files such as `.#system.clj` (dangling symlinks) are skipped."
+  (->> (file-seq (io/file "src")) (filter #(and (str/ends-with? (.getName %) ".clj") (not (str/starts-with? (.getName %) ".#"))))))
 (def edges (atom #{}))
 (def problems (atom []))
 

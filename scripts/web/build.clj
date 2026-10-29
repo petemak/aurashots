@@ -7,8 +7,10 @@
     css/*.<hash>.css                        design-tokens.css, fonts.css, web/css/*.css
     js/*.<hash>.js, js/site/*.<hash>.js     bundles (no bundler: plain concatenation)
     fonts/*.<hash>.woff2, assets/**         copied from assets/ with fingerprinted names
-  Environment: PUBLIC_BASE_URL (default https://aura-shots.com) replaces %%BASE_URL%% in the HTML,
-  so canonical and Open Graph URLs of static pages are absolute and correct for the deployment.
+  Environment: PUBLIC_BASE_URL replaces %%BASE_URL%% in the HTML, so canonical and Open Graph
+  URLs of static pages are absolute and match the backend's. APP_ENV defaults to dev; in dev an
+  unset PUBLIC_BASE_URL becomes http://localhost:8080 (same as the backend), otherwise the build fails.
+  og:image is assets/og-image.png (1200x630); if missing, favicon-512.png with a warning.
 
   Admin help: admin-help.md is converted here to HTML (no Markdown parser ships to the browser)
   and written as js/admin-help.js. admin-help.md itself is never modified."
@@ -21,7 +23,20 @@
               fs/absolutize fs/parent fs/parent fs/parent str))
 (defn p [& parts] (str (apply fs/path root parts)))
 (def dist (p "dist" "web"))
-(def base-url (or (System/getenv "PUBLIC_BASE_URL") "https://aura-shots.com"))
+(def app-env (or (System/getenv "APP_ENV") "dev"))
+(def base-url
+  (let [v (System/getenv "PUBLIC_BASE_URL")
+        v (when-not (str/blank? v) (str/replace v #"/+$" ""))]
+    (cond v v
+          (= app-env "dev") "http://localhost:8080"
+          :else (throw (ex-info (str "PUBLIC_BASE_URL must be set when APP_ENV=" app-env) {})))))
+
+(def og-image
+  "Open Graph image: logical path, width, height."
+  (if (fs/exists? (p "assets" "og-image.png"))
+    {:path "/assets/og-image.png" :w 1200 :h 630}
+    (do (println "WARNING: assets/og-image.png is missing; using favicon-512.png for og:image")
+        {:path "/assets/favicon-512.png" :w 512 :h 512})))
 
 (defn sha10
   "First ten hex characters of the SHA-256 of the given bytes."
@@ -76,6 +91,11 @@
           (fs/copy f (doto (io/file dist "fonts" nm) io/make-parents) {:replace-existing true}))
         (or (= rel "site.webmanifest")) nil ; written after images, it refers to them
         :else (write-hashed! (str "/assets/" rel) (slurp-bytes f)))))
+  ;; The sharing image also keeps a stable, unhashed URL: the backend's SEO rewrite
+  ;; and JSON-LD point at /assets/og-image.png, and social sites cache that URL.
+  (when (fs/exists? (p "assets" "og-image.png"))
+    (fs/copy (p "assets" "og-image.png") (doto (io/file dist "assets" "og-image.png") io/make-parents)
+             {:replace-existing true}))
   (let [mf (p "assets" "site.webmanifest")]
     (write-hashed! "/assets/site.webmanifest" (utf8 (rewrite (slurp mf))))))
 
@@ -186,6 +206,10 @@
         render (fn [src]
                  (-> src
                      (str/replace #"<!--@include:([a-z-]+)-->" (fn [[_ n]] (or (partials n) (throw (ex-info (str "missing partial " n) {})))))
+                     (str/replace #"(?m)^(<meta (?:property=\"og:image\"|name=\"twitter:image\") content=\")%%BASE_URL%%/assets/favicon-512\.png(\">)$"
+                                  (fn [[_ a b]] (str a "%%BASE_URL%%" (:path og-image) b)))
+                     (str/replace #"(?m)^(<meta property=\"og:image\" content=\"[^\"]*\">)$"
+                                  (fn [[_ a]] (str a "\n<meta property=\"og:image:width\" content=\"" (:w og-image) "\">\n<meta property=\"og:image:height\" content=\"" (:h og-image) "\">\n<meta property=\"og:image:alt\" content=\"Aura Shots, private photography studio in Kigali\">")))
                      (str/replace "%%BASE_URL%%" base-url)
                      rewrite))
         pages (concat (map #(vector "site" %) (fs/glob (p "web" "site") "*.html"))

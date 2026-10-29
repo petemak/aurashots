@@ -5,6 +5,7 @@
             [aurashots.features.media.store :as store]
             [aurashots.platform.http-core.interceptors :as ic]
             [aurashots.platform.http-core.response :as resp]
+            [aurashots.platform.http-core.response-schemas :as rs]
             [aurashots.platform.http-core.schemas :as s]
             [aurashots.platform.images :as images]
             [aurashots.platform.media-store :as media-store]
@@ -49,12 +50,13 @@
   "Returns the route specs of the media slice. `deps` keys: `:conn`, `:media-store`, `:clock`."
   [{:keys [conn media-store] :as deps}]
   [{:name :media/serve :method :get :path "/media/:image-id/:file" :public true :no-input true
+    :response {200 rs/Raw}
     :handler (fn [req] (serve-image deps req))}
    {:name :media/upload :method :post :path "/api/admin/images" :roles #{:owner :support}
-    :no-input true :multipart true
+    :no-input true :multipart true :response {201 rs/Image}
     :handler (fn [req] (upload! deps req))}
    {:name :media/delete :method :delete :path "/api/admin/images/:id" :roles #{:owner :support}
-    :schema {:path (s/closed-map [:id s/Id])}
+    :schema {:path (s/closed-map [:id s/Id])} :response {204 rs/NoBody}
     :handler (fn [{{{:keys [id]} :path} :params}]
                (when-not (store/get-image conn id) (err/fail! :notFound "That image does not exist."))
                (when (store/in-use? conn id)

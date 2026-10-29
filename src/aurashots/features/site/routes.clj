@@ -4,6 +4,7 @@
   (:require [aurashots.features.site.api :as api]
             [aurashots.features.site.core :as core]
             [aurashots.platform.http-core.response :as resp]
+            [aurashots.platform.http-core.response-schemas :as rs]
             [aurashots.platform.http-core.schemas :as s]
             [aurashots.shared.errors :as err]))
 
@@ -28,17 +29,41 @@
    [:portfolioCategories [:vector {:max 50}
                           (s/closed-map [:id {:optional true} [:maybe s/Id]] [:name (s/text 1 60)])]]))
 
+(defn- settings-schema
+  "Response schema of the settings body with `area` as the delivery-area schema (public: id, name, fee; admin: plus
+  the `active` flag)."
+  [area]
+  (rs/obj [:name :string] [:tagline :string] [:address (rs/maybe :string)] [:phone (rs/maybe :string)]
+          [:whatsapp (rs/maybe :string)] [:email :string]
+          [:social (rs/obj [:instagram (rs/maybe :string)] [:tiktok (rs/maybe :string)] [:facebook (rs/maybe :string)])]
+          [:openingHours [:vector (rs/obj [:days [:vector day]] [:open rs/Time] [:close rs/Time])]]
+          [:timeZone [:= "Africa/Kigali"]]
+          [:booking (rs/obj [:minNoticeHours :int] [:windowDays :int] [:slotMinutes :int]
+                            [:defaultSessionMinutes (rs/maybe :int)])]
+          [:deliveryAreas [:vector area]]
+          [:portfolioCategories [:vector (rs/obj [:id rs/Id] [:name :string])]]))
+
+(def ^:private public-settings
+  "Response of `GET /api/site-info`."
+  (settings-schema (rs/obj [:id rs/Id] [:name :string] [:feeRwf (rs/maybe rs/Money)])))
+
+(def ^:private admin-settings
+  "Response of the admin settings endpoints: every delivery area with its `active` flag."
+  (settings-schema (rs/obj [:id rs/Id] [:name :string] [:feeRwf (rs/maybe rs/Money)] [:active :boolean])))
+
 (defn routes
   "Returns the route specs of the site slice. `deps` keys: `:conn`, `:config`, `:category-in-use?`
   (function `(conn category-id) -> bool` injected from the portfolio slice by `system`)."
   [{:keys [conn config category-in-use?]}]
   (let [owner (:owner-email config)]
     [{:name :site/info :method :get :path "/api/site-info" :public true :no-input true
+      :response {200 public-settings}
       :handler (fn [_] (resp/cached (api/public-info conn owner)))}
      {:name :site/admin-get :method :get :path "/api/admin/settings" :roles #{:owner :support} :no-input true
+      :response {200 admin-settings}
       :handler (fn [_] (resp/ok (core/admin-view (api/settings conn) owner)))}
      {:name :site/admin-put :method :put :path "/api/admin/settings" :roles #{:owner :support}
-      :schema {:body settings-body}
+      :schema {:body settings-body} :response {200 admin-settings}
       :handler (fn [{{body :body} :params}]
                  (let [fields (core/validate-update body)
                        _ (when (seq fields) (err/fail! :validationFailed "Some details need attention." fields))

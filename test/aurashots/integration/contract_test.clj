@@ -62,6 +62,11 @@
       (when-not (contains? #{:auth/login :auth/forgot :auth/reset} (:name s))
         (is (seq (:roles s)) (str (:name s) " must require a session"))))))
 
+(deftest ^{:doc "Tests every route declares a response schema."} every-route-declares-a-response-schema
+  (doseq [s (server/route-specs {:config {:public-base-url "http://x" :http {}}})]
+    (is (seq (:response s)) (str (:name s) " needs :response {status schema}"))
+    (is (some #(< % 300) (keys (:response s))) (str (:name s) " needs a success status in :response"))))
+
 (deftest ^{:doc "Tests every admin route rejects anonymous and bad csrf."} every-admin-route-rejects-anonymous-and-bad-csrf
   (let [owner (h/owner-session @env)]
     (doseq [s (server/route-specs {:config {:public-base-url "http://x" :http {}}})

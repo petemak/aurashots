@@ -1,6 +1,6 @@
 # API Contract – Aura Shots
 
-Backend: Clojure (Pedestal, Malli, Datalevin), one service on one origin. Frontend: plain HTML5/CSS/JS files served by that same service; the browser calls only the endpoints below (section 6 defines how the service serves the pages). Amended by architect, see the change list at the end of architecture.md.
+Backend: Clojure (Pedestal, Malli, Datalevin), one service on one origin. Frontend: plain HTML5/CSS/JS files served by that same service; the browser calls only the endpoints below (section 6 defines how the service serves the pages). Amended by architect, see the change list at the end of architecture.md and Amendments A1 and A2 at the end of this file.
 
 ## 1. Conventions
 
@@ -8,7 +8,7 @@ Backend: Clojure (Pedestal, Malli, Datalevin), one service on one origin. Fronte
 - Keys camelCase. Dates `YYYY-MM-DD`; times `HH:mm` (24-hour, local); instants ISO 8601 with offset (e.g. `2026-11-14T10:30:00+02:00`). Business time zone `Africa/Kigali`.
 - Money: integer RwF, field names end in `Rwf` (e.g. `priceRwf: 50000`). Never decimals.
 - IDs: opaque strings (`id`). Public references: `AS-S-` + 8 characters for sessions, `AS-M-` + 8 characters for merchandise (uppercase letters and digits, no I/O/0/1).
-- **Error shape everywhere:** `{ "error": { "code": "...", "message": "...", "fields": { "fieldName": "message" } } }` (`fields` only on validation errors; it is an optional extension to the standard `{error:{code,message}}`).
+- **Error shape everywhere:** `{ "error": { "code": "...", "message": "...", "fields": { "fieldName": "message" } } }` (`fields` only on validation errors and where a section names a field; it is an optional extension to the standard `{error:{code,message}}`).
 - Error codes: `validationFailed` 400, `unauthenticated` 401, `forbidden` 403, `notFound` 404, `conflict` 409, `slotUnavailable` 409, `itemUnavailable` 409, `agreementVersionStale` 409, `idempotencyKeyReused` 422, `rateLimited` 429, `serverError` 500. A second request that arrives with the same `Idempotency-Key` while the first is still being processed gets 409 `conflict` with header `Retry-After: 2`. The `fields` member is an accepted optional extension of the standard error shape; no other members are allowed.
 - **Media:** every `Image.url` / `thumbUrl` is a same-origin path of the form `/media/{imageId}/{size}.jpg` (sizes: `thumb` 400 px, `card` 800 px, `large` 1600 px long edge; the original is never served). Media responses carry `Cache-Control: public, max-age=31536000, immutable` (image ids never change content). `Image.url` is the `large` size, `thumbUrl` the `thumb` size.
 - **Client IP:** rate limits use the client address supplied by the hosting edge in `X-Forwarded-For`, trusting only the configured number of proxy hops.
@@ -74,7 +74,7 @@ Response 200 paginated:
 ```
 ProductSummary { id, slug, name, category, priceRwf, mainImage: Image, isNew: bool, availability: "inStock"|"soldOut" }
 ```
-`availability` is `soldOut` when the item (or all of its options) is flagged sold out.
+**Sold-out rule** (the same in list, detail, quotes and orders): `availability` is `soldOut` when the product's own `inStock` flag is false, or when any of its option groups has no option in stock (a fully sold-out size group makes the item unorderable). Setting any option back in stock (quick toggle or edit form) clears the product-level flag, so re-enabling options always brings a "Mark as sold out" product back as long as every group has an option in stock.
 
 ### 2.6 GET /api/products/{slug}
 Response 200: ProductSummary plus
@@ -84,17 +84,17 @@ Response 200: ProductSummary plus
                   { name: "Colour", options: [ ... ] } ],
   relatedServiceIds: [string] }
 ```
-Note: stock is not counted; `inStock` is a staff-set flag only.
+Note: stock is not counted; `inStock` is a staff-set flag only. `availability` follows the sold-out rule in 2.5.
 
 ### 2.7 GET /api/availability
-Query: `from` (date), `to` (date), max span 62 days; optional `date` (single day, with times); optional `serviceIds` (comma-separated, 1-10). The session length used for slot rules is the sum of the `sessionMinutes` of the given services (each falling back to `booking.defaultSessionMinutes`); with no `serviceIds`, or when no length is known, the default session length applies, and 60 minutes when that is also unset. The same function is used when a request is submitted and when staff confirm.
+Query: `from` (date), `to` (date), max span 62 days; optional `date` (single day, with times); optional `serviceIds` (comma-separated, 1-10). `from` and `to` are optional when `date` is given: both default to that day. A `date` outside `[from,to]` is ignored (no slots are returned for it). The session length used for slot rules is the sum of the `sessionMinutes` of the given services (each falling back to `booking.defaultSessionMinutes`); with no `serviceIds`, or when no length is known, the default session length applies, and 60 minutes when that is also unset. The same function is used when a request is submitted and when staff confirm.
 Response 200
 ```
 { "timeZone": "Africa/Kigali",
   "days": [ { "date": "2026-11-14", "status": "available"|"blocked"|"full"|"past"|"tooSoon"|"closed",
               "slots": [ { "startTime": "10:30", "available": true } ] } ] }
 ```
-`slots` is included only when `date` is given, or for every day if the span is <= 7 days. Slot rules (computed on the server): within opening hours, on the 30-minute grid, last start = close minus session length, not inside a block, not overlapping a confirmed session, not earlier than now + `minNoticeHours`, not beyond `windowDays`. Pending requests do not block.
+`slots` is included only when `date` is given, or for every day if the span is <= 7 days. Slot rules (computed on the server): within opening hours, on the 30-minute grid, last start = close minus session length, not inside a block, not overlapping a confirmed session, not earlier than now + `minNoticeHours`. Days beyond `windowDays` from today are reported with status `closed` and no available slots. Pending requests do not block.
 
 ### 2.8 POST /api/quotes/sessions
 Used by the basket to re-check prices. Request `{ "serviceIds": ["..."] }` (1-10). Response 200
@@ -102,15 +102,17 @@ Used by the basket to re-check prices. Request `{ "serviceIds": ["..."] }` (1-10
 { "items": [ { "serviceId", "name", "priceRwf", "available": true, "reason": null, "mainImage": Image } ],
   "totalRwf": 150000 }
 ```
+For an id that no longer exists (`reason: "removed"`), `name`, `priceRwf` and `mainImage` are `null`; the basket shows its own stored name for that line.
 `available:false` with `reason: "unpublished"|"noPrice"|"removed"`.
 
 ### 2.9 POST /api/quotes/merchandise
-Request `{ "items": [ { "productId", "optionIds": ["..."], "quantity": 1 } ], "deliveryAreaId": "..."? }` (1-20 lines, quantity 1-10).
+Request `{ "items": [ { "productId", "optionIds": ["..."], "quantity": 1 } ], "deliveryAreaId": "..."? }` (1-20 lines, quantity 1-10). `optionIds` must contain **exactly one option of each of the product's option groups** (none for a product without groups); a missing group, two options of one group or an unknown option is `invalidOption`.
 Response 200
 ```
 { "items": [ { "productId", "name", "optionLabels": ["M","Black"], "unitPriceRwf", "quantity", "lineTotalRwf", "available": true, "reason": null } ],
   "subtotalRwf": 0, "deliveryFeeRwf": null, "totalRwf": null, "feeNote": "toBeConfirmed"|null }
 ```
+`available:false` with `reason: "unpublished"|"removed"|"soldOut"|"invalidOption"` (`soldOut` follows the rule in 2.5 and also applies when a chosen option is out of stock). Clients treat `reason` as an open string and show a generic message for an unknown value. Unavailable lines do not count toward the totals.
 
 ### 2.10 GET /api/documents/{slug}
 Slugs: `terms-of-sale`, `refund-policy`, `privacy`, `order-terms`, `session-booking-agreement`, `merchandise-order-terms`. Optional `?version=n` returns an older version (used by the "view accepted text" links).
@@ -135,7 +137,7 @@ Headers: `Idempotency-Key`. Request
 }
 ```
 Server behaviour (single transaction):
-1. Validate; `agreement.accepted` must be `true` and `version` must equal the current published version, else 409 `agreementVersionStale` (body includes current version) or 400.
+1. Validate; `agreement.accepted` must be `true` (else 400 `validationFailed`) and `version` must equal the current published version, else 409 `agreementVersionStale` with `error.fields.currentVersion` set to the current version as a string (for example `{"error":{"code":"agreementVersionStale","message":"...","fields":{"currentVersion":"4"}}}`).
 2. Re-check every service is published with a price (`itemUnavailable` otherwise) and the slot is currently available (`slotUnavailable` otherwise).
 3. Create the booking request with status `pending`, snapshot service names and prices.
 4. **Write an acceptance record** (immutable): `{ id, documentSlug, version, bodyHash (sha-256 of text accepted), subjectType: "bookingRequest", subjectId, subjectReference, customerName, customerEmail, customerPhone, acceptedAt (server clock, ISO 8601), ipAddress, userAgent }`.
@@ -149,7 +151,7 @@ Response 201
   "agreementAcceptance": { "slug", "version", "acceptedAt" } }
 ```
 `durationMinutes` is snapshotted at submit (sum of service lengths or the default) and is the time a confirmed session blocks.
-Errors: 400 `validationFailed`, 409 `slotUnavailable` (standard error body only, no alternatives list; the frontend re-fetches availability and returns the customer to step 1 with their details kept), 409 `itemUnavailable` (message lists names), 409 `agreementVersionStale`, 429.
+Errors: 400 `validationFailed`, 409 `slotUnavailable` (standard error body only, no alternatives list; the frontend re-fetches availability and returns the customer to step 1 with their details kept), 409 `itemUnavailable` (message lists names), 409 `agreementVersionStale` (with `fields.currentVersion`), 429.
 
 ### 2.12 GET /api/booking-requests/{reference}?token={accessToken}
 Response 200: same fields as 2.11 response plus `status` current (`pending`|`confirmed`|`declined`|`completed`) and, when confirmed, `confirmedSlot: Slot`, `customerNote`. 404 if token wrong (no hint). Contains no internal notes.
@@ -165,7 +167,7 @@ Headers: `Idempotency-Key`. Request
   "website": ""
 }
 ```
-Server: validates (either `areaId` or `areaText` required); every item published, in stock (`itemUnavailable`); creates order `pending` with price snapshot and delivery fee snapshot (null when TBD); writes the acceptance record (as 2.11, `subjectType: "merchandiseOrder"`); queues emails.
+Server: validates (either `areaId` or `areaText` required; `optionIds` exactly one option per option group of the product, as in 2.9, otherwise 400 `validationFailed`); every item published and in stock by the rule in 2.5 (`itemUnavailable` otherwise); a stale agreement version gives 409 `agreementVersionStale` with `error.fields.currentVersion` (as in 2.11); creates order `pending` with price snapshot and delivery fee snapshot (null when TBD); writes the acceptance record (as 2.11, `subjectType: "merchandiseOrder"`); queues emails.
 Response 201
 ```
 { "id", "reference": "AS-M-4H8T2NWB", "accessToken", "status": "pending", "createdAt",
@@ -182,7 +184,7 @@ Headers: `Idempotency-Key`. Request `{ "name": "2-100", "email": "valid", "phone
 Response 201 `{ "id", "receivedAt" }`. Stored, owner emailed, acknowledgement queued.
 
 ### 2.16 GET /sitemap.xml and GET /robots.txt (not under /api)
-Generated by the backend from published services and products plus the static public pages (section 6). `robots.txt` disallows `/admin`, `/api/` and the noindex pages and points to `/sitemap.xml`. Replaces the earlier `GET /api/sitemap`, which is removed because there is no separate frontend server.
+Generated by the backend from published services and products plus the static public pages (section 6). In production, `robots.txt` disallows `/admin`, `/api/` and the noindex pages and points to `/sitemap.xml`, and the sitemap uses the production origin (`PUBLIC_BASE_URL`). In any non-production environment (`APP_ENV` other than `prod`), `robots.txt` is exactly `User-agent: *` and `Disallow: /`, every HTML response carries `X-Robots-Tag: noindex`, and the sitemap lists URLs built from `PRODUCTION_BASE_URL` (an empty `<urlset>` when it is not set), never the staging host. Replaces the earlier `GET /api/sitemap`, which is removed because there is no separate frontend server.
 
 ### 2.17 GET /api/health
 Response 200 `{ "status": "ok" }`.
@@ -194,7 +196,7 @@ Response 200 `{ "status": "ok" }`.
 - `POST /api/admin/auth/logout` -> 204.
 - `GET /api/admin/auth/me` -> 200 `{ user, csrfToken }` or 401.
 - `POST /api/admin/auth/forgot-password` `{ email }` -> always 202 `{ ok: true }`. Sends a single-use link valid 60 minutes.
-- `POST /api/admin/auth/reset-password` `{ token, newPassword }` (min 12 chars) -> 204; 400 on bad/expired token. Also used by staff invitations to set the first password. Invalidates all sessions of that user.
+- `POST /api/admin/auth/reset-password` `{ token, newPassword }` (min 12 chars) -> 204; 400 on bad/expired token. Also used by staff invitations to set the first password (an invitation token is valid 72 hours; a reset token 60 minutes). Invalidates all sessions of that user.
 - `POST /api/admin/auth/change-password` `{ currentPassword, newPassword }` -> 204; 400 on wrong current password.
 
 ### 3.2 Dashboard
@@ -236,7 +238,7 @@ Naming: admin paths use the same resource names as the public ones (`booking-req
 - `POST /api/admin/merchandise-orders/{id}/notes`, `POST /api/admin/merchandise-orders/{id}/messages/{messageId}/resend` as above.
 
 ### 3.5 Services (owner, support)
-- `GET /api/admin/services?status=published|hidden|removed` -> `{ items: [ { id, name, priceRwf|null, status: "published"|"hidden", needsPrice: bool, mainImage|null } ] }` (removed excluded unless asked).
+- `GET /api/admin/services?status=published|hidden|removed` -> `{ items: [ { id, name, priceRwf|null, status: "published"|"hidden", needsPrice: bool, mainImage|null } ] }` (removed excluded unless asked). Not paginated: the service list is small.
 - `GET /api/admin/services/{id}` -> full record.
 - `POST /api/admin/services` -> 201 and `PUT /api/admin/services/{id}` -> 200, same body:
 ```
@@ -247,21 +249,21 @@ Naming: admin paths use the same resource names as the public ones (`booking-req
   "images": [ { "imageId": "...", "alt": "1-200" } ],   // order = display order, first = main
   "featured": false, "status": "published"|"hidden", "sortOrder": 0 }
 ```
-Rule: `status: "published"` with `priceRwf` null or 0 -> 400 `validationFailed` (`fields.priceRwf`). Slug generated from name, unique; the slugs `checkout` and `received` are reserved (they would collide with page routes).
+Rule: `status: "published"` with `priceRwf` null or 0 -> 400 `validationFailed` (`fields.priceRwf`). Slug generated from the name when the service is created, unique, and **never changes afterwards**, not even when the name is edited (public URLs and canonical tags stay valid); the slugs `checkout` and `received` are reserved (they would collide with page routes).
 - `PUT /api/admin/service-order` `{ ids: [ordered ids] }` -> 204. (Renamed from `/services/order`, which collided with `/services/{id}`.)
 - `DELETE /api/admin/services/{id}` -> 204. Soft remove (status `removed`): disappears from the shop; existing booking requests keep their snapshots.
 Price changes affect only new requests; existing requests keep their snapshot.
 
 ### 3.6 Merchandise (owner, support)
-- `GET /api/admin/products`, `GET /api/admin/products/{id}`, `POST /api/admin/products`, `PUT /api/admin/products/{id}`, `DELETE /api/admin/products/{id}` (soft remove, 204).
+- `GET /api/admin/products?page&pageSize` -> paginated `{ items: [ { id, name, category, priceRwf, status, availability: "inStock"|"soldOut", mainImage|null } ], page, pageSize, total }`; `GET /api/admin/products/{id}`, `POST /api/admin/products`, `PUT /api/admin/products/{id}`, `DELETE /api/admin/products/{id}` (soft remove, 204). Unlike the service list (3.5), the product list is paginated.
 - Body:
 ```
 { "name", "category": "clothing"|"prints"|"framed-art", "description", "details", "priceRwf": int>=1,
   "optionGroups": [ { "name": "Size", "options": [ { "id"?: "...", "label": "M", "inStock": true } ] } ],
   "images": [ { "imageId", "alt" } ], "isNew": false, "featured": false, "status": "published"|"hidden" }
 ```
-Product slugs: generated from name, unique; `checkout` and `received` are reserved.
-- `PATCH /api/admin/products/{id}/availability` `{ optionId?: "...", inStock: bool }` -> 200 (quick toggle; without `optionId` toggles all options).
+Product slugs: generated from the name on creation, unique, never changed by a later rename; `checkout` and `received` are reserved. When a `PUT` leaves every option group with an option in stock, the product-level sold-out flag is cleared (rule in 2.5).
+- `PATCH /api/admin/products/{id}/availability` `{ optionId?: "...", inStock: bool }` -> 200 (quick toggle; without `optionId` sets all options and the product flag to `inStock`; with `optionId` sets that option, and when `inStock` is true also clears the product-level sold-out flag). The response is the product with its resulting `availability`.
 
 ### 3.7 Images (owner, support)
 - `POST /api/admin/images` multipart `file` (JPEG/PNG/WebP, max 10 MB, max 6000 px) -> 201 `Image` (server re-encodes, strips location metadata, creates sizes). 400 on wrong type.
@@ -295,10 +297,10 @@ Seeding: the sample images from `business/images/shots` are imported into the po
 
 ### 3.12 Staff accounts (owner only)
 - `GET /api/admin/staff` -> `{ items: [ { id, name, email, role, active, invitationPending: bool, lastSignInAt|null } ] }` (`invitationPending` is true until the person has set a first password; the UI shows "Invitation sent").
-- `POST /api/admin/staff` `{ name, email }` -> 201; role always `support`; sends invitation email. 409 `conflict` if email exists.
+- `POST /api/admin/staff` `{ name, email }` -> 201 `{ ...staff record, invitationUrl, invitationExpiresAt, emailQueued: bool }`; role always `support`; `emailQueued` is true only when SMTP is configured and the invitation email was queued; when email is not configured nothing is queued and `emailQueued` is false. `invitationUrl` is the full one-time link (valid 72 hours) and is returned only in this response, never stored in readable form or listed later; the owner copies it and sends it to the new staff member by WhatsApp or in person. 409 `conflict` if email exists.
 - `GET /api/admin/staff/{id}` -> record.
 - `PATCH /api/admin/staff/{id}` `{ name?, active? }` -> 200. `active:false` ends their sessions at once. The owner account cannot be switched off.
-- `POST /api/admin/staff/{id}/reset-password-link` -> 202 (emails link).
+- `POST /api/admin/staff/{id}/reset-password-link` -> 200 `{ kind: "invitation"|"reset", url, expiresAt, emailQueued: bool }`. For a member with `invitationPending: true` it issues a fresh invitation link (72 hours); otherwise a password reset link (60 minutes). Any earlier unused link of the same kind for that member stops working. The link is returned only in this response; `emailQueued` follows the same rule as above (true only when SMTP is configured).
 - `DELETE /api/admin/staff/{id}` -> 204. Cannot delete the owner or oneself. Past history entries keep the name.
 
 ### 3.13 Documents and agreements (owner only for write; list for owner)
@@ -338,10 +340,11 @@ The backend serves the HTML files built by the frontend (the "web root") and is 
 | `/cart/sessions`, `/cart/merchandise`, `/book`, `/book/received/{reference}` | `site/cart-sessions.html`, `site/cart-merchandise.html`, `site/book.html`, `site/book-received.html` | static, noindex | nothing |
 | `/about` | `site/about.html` | static | nothing |
 | `/contact` | `site/contact.html` | dynamic head | SEO region (JSON-LD ProfessionalService from settings) |
-| `/legal/terms-of-sale`, `/legal/refund-policy`, `/legal/privacy`, `/legal/order-terms` | `site/legal.html` (one template; the JS reads the slug from the path) | dynamic head | SEO region: title and description per document (design-spec Part 6, P15-P18) |
+| `/legal/terms-of-sale`, `/legal/refund-policy`, `/legal/privacy`, `/legal/order-terms` | `site/legal.html` (one template; the JS reads the slug from the path) | dynamic head | SEO region: title and description per document (design-spec Part 6, P15-P18); the description is at least 20 characters (the backend falls back to the static description when the first key point is shorter) |
 | any unknown path | `site/404.html` served with HTTP 404 | static, noindex | nothing |
 | `/admin` and every `/admin/**` page path in design-spec Part 2 (including `/admin/help/{topic}`) | `admin/index.html` (single admin shell; the JS routes inside it) | static, noindex | nothing |
 | `/assets/**`, `/css/**`, `/js/**`, `/fonts/**` | same-named folders in the web root | static files | nothing |
+| `/assets/og-image.png` | the default share image, 1200 x 630 PNG | static, stable unhashed URL | nothing |
 
 Document slug to URL mapping: `terms-of-sale` -> `/legal/terms-of-sale`, `refund-policy` -> `/legal/refund-policy`, `privacy` -> `/legal/privacy`, `order-terms` -> `/legal/order-terms`. The two agreements (`session-booking-agreement`, `merchandise-order-terms`) have no page of their own; they are shown inside P8 and P11 and via `GET /api/documents/{slug}`.
 
@@ -351,8 +354,42 @@ Document slug to URL mapping: `terms-of-sale` -> `/legal/terms-of-sale`, `refund
  ...complete static fallback: title, meta description, canonical, og:*, twitter, JSON-LD...
 <!--@seo:end-->
 ```
-The frontend writes a complete, valid fallback inside the region on every page (so each page is correct when opened without the backend). For pages marked "dynamic head" the backend replaces everything between the markers with tags generated from live data and the SEO table in design-spec Part 6; for all other pages it serves the file unchanged. The `og:image` is the item's main image or the first featured portfolio image. The `<h1>`, body and all other parts of the page are never touched.
+The frontend writes a complete, valid fallback inside the region on every page (so each page is correct when opened without the backend). For pages marked "dynamic head" the backend replaces everything between the markers with tags generated from live data and the SEO table in design-spec Part 6; for all other pages it serves the file unchanged. The `og:image` is the item's main image, or the first featured portfolio image, or the default share image `/assets/og-image.png`; every `og:image` and JSON-LD image URL must resolve with 200. The `<h1>`, body and all other parts of the page are never touched. The canonical, `og:url` and `og:image` origin in static files is the `PUBLIC_BASE_URL` given to the frontend build (the build fails in staging and prod when it is unset, and no default domain is baked in); the backend uses its own `PUBLIC_BASE_URL` for the dynamic head.
 
 **Initial data.** For `/services/{slug}` and `/shop/{slug}` the backend also replaces a single `<!--@data-->` comment in `<body>` with `<script type="application/json" id="initial-data">{...}</script>`, containing exactly the JSON that `GET /api/services/{slug}` / `GET /api/products/{slug}` would return (script-safe encoding: `<` as `<`). The frontend renders from it when present and falls back to the API call when it is not (for example when the file is opened directly).
 
-**Headers.** Dynamic-head pages: `Cache-Control: public, max-age=60, stale-while-revalidate=300`, `ETag`. Other HTML: `Cache-Control: public, max-age=300`. Files under `/css`, `/js`, `/fonts`, `/assets`: `max-age=31536000, immutable`, so the frontend must fingerprint file names (for example `site.3f9a1c.css`) at build time. Noindex pages and `/admin/**`: `X-Robots-Tag: noindex` (the frontend also adds `<meta name="robots" content="noindex">`); `/admin/**` is also `Cache-Control: no-store`. The backend sets a `Content-Security-Policy` on all HTML (`default-src 'self'`; images and fonts self only; no third-party origins), so the frontend must use no inline scripts, no inline event handlers and no inline styles. JSON-LD and the initial-data block are non-executed data blocks and are allowed.
+**Headers.** Dynamic-head pages: `Cache-Control: public, max-age=60, stale-while-revalidate=300`, `ETag`. Other HTML: `Cache-Control: public, max-age=300`. Files under `/css`, `/js`, `/fonts`, `/assets`: `max-age=31536000, immutable`, so the frontend must fingerprint file names (for example `site.3f9a1c.css`) at build time; the one exception is `/assets/og-image.png`, which keeps a stable name and is served `Cache-Control: public, max-age=86400`. Noindex pages and `/admin/**`: `X-Robots-Tag: noindex` (the frontend also adds `<meta name="robots" content="noindex">`); `/admin/**` is also `Cache-Control: no-store`. The backend sets a `Content-Security-Policy` on HTML responses only (`default-src 'self'`; images and fonts self only; no third-party origins; `frame-ancestors 'none'`); JSON and media responses are not required to carry it. The frontend therefore uses no inline scripts, no inline event handlers and no inline styles, and its build concatenates plain script files (no native ES modules). JSON-LD and the initial-data block are non-executed data blocks and are allowed. Outside production (`APP_ENV` other than `prod`) every HTML response also carries `X-Robots-Tag: noindex` (see 2.16).
+
+## Amendment A1 (29 October 2026, owner decision): staff links shown in admin
+
+Email may not be configured at launch, so invitation and password-reset links for staff must not exist only in queued emails. Section 3.12 now returns the link once in the response to `POST /api/admin/staff` and `POST /api/admin/staff/{id}/reset-password-link`. The admin shows it with a **Copy link** button. The owner's own forgotten password is handled on the server by a command line task (`bb owner-link`) that prints a one-time reset link, since no one else can issue it.
+
+## Amendment A2 (29 October 2026, architect, after the build review): rulings written into the contract
+
+These record behaviour the backend built and the review accepted; the sections named were edited in place. Endpoint paths do not change.
+
+1. 2.7 availability: `from` and `to` are optional when `date` is given (both default to that day); a `date` outside `[from,to]` is ignored.
+2. 2.7: days beyond `windowDays` are reported with status `closed`.
+3. 2.9: quote line `reason` values are `unpublished|removed|soldOut|invalidOption` (2.8 stays `unpublished|noPrice|removed`); clients treat the string as open.
+4. 2.5 (also 2.6, 2.13, 3.6): sold-out rule: the product's `inStock` flag is false, or any option group has no option in stock. Setting an option in stock (quick toggle or edit) clears the product flag; the quick toggle without `optionId` sets all options and the flag. Replaces "or all of its options".
+5. 2.9 and 2.13: exactly one option per option group on quote and order lines.
+6. 3.1 and 3.12: invitation token valid 72 hours (reset token stays 60 minutes).
+7. 3.5 and 3.6: slugs are generated on creation and are stable on rename.
+8. 3.6: the admin product list is paginated `{items,page,pageSize,total}` (the service list in 3.5 is `{items}` without pagination, stated explicitly).
+9. 2.11 and 2.13: `agreementVersionStale` carries `error.fields.currentVersion` (string); section 1 notes that `fields` may also appear where a section names a field.
+10. 3.12: `emailQueued` is true only when SMTP is configured; when email is not configured nothing is queued for staff links and it is false.
+11. 2.16 and 6: outside production robots is `User-agent: *` / `Disallow: /`, HTML carries `X-Robots-Tag: noindex`, and the sitemap uses `PRODUCTION_BASE_URL` (empty when unset).
+12. 6: `/assets/og-image.png` is published at a stable unhashed URL (max-age 86400); the static canonical/Open Graph base is the build's `PUBLIC_BASE_URL`, required for staging and prod; CSP is on HTML responses only; the frontend build concatenates files (no native ES modules); legal page descriptions have a 20-character floor.
+13. 3.6 response of the quick toggle: the product with its resulting `availability`.
+
+Frontend notes: send exactly one `optionId` per group (item 5); the admin product list now needs paging (item 8); the fallback in `web/js/admin/30-catalog.js` that applies the old "all options" rule can be removed because the server always sends `availability` (item 4); the admin must show the block-dates `affectedSessions` warning after reloading the panel (QA report 2, broken item 2).
+
+## Amendment A3 (29 October 2026, lead): shapes confirmed by response schemas
+
+Every route now has a closed Malli response schema checked in dev and test, which surfaced these details the sections above leave implicit:
+- 2.8: a removed service's quote line has `name`, `priceRwf` and `mainImage` set to `null` (now stated in 2.8).
+- 3.4 admin merchandise order detail also returns `customerNote`, and its `delivery` object includes `areaName`.
+- 3.5 admin service record also returns `needsPrice` and `mainImage`.
+- 3.6 admin product record also returns `createdAt`, `inStock` (the product-level flag) and `availability`.
+- Quote reason values: sessions `unpublished | noPrice | removed`; merchandise `unpublished | removed | soldOut | invalidOption`.
+

@@ -4,6 +4,7 @@
   deliberately no route that creates a booking on behalf of a customer."
   (:require [aurashots.features.booking.api :as api]
             [aurashots.platform.http-core.response :as resp]
+            [aurashots.platform.http-core.response-schemas :as rs]
             [aurashots.platform.http-core.schemas :as s]
             [aurashots.shared.errors :as err]
             [aurashots.shared.time :as t]))
@@ -21,6 +22,46 @@
 (def ^:private slot-body
   [[:date s/Date] [:startTime s/Time] [:noteToCustomer {:optional true} [:maybe (s/text 0 1000)]]
    [:force {:optional true} :boolean]])
+
+(def ^:private booking-status [:enum "pending" "confirmed" "declined" "completed"])
+
+(def ^:private service-line
+  "A snapshotted service line of a session request."
+  (rs/obj [:serviceId rs/Id] [:name :string] [:priceRwf rs/Money]))
+
+(def ^:private public-booking
+  "Customer-facing session request (api-contract.md sections 2.11 and 2.12); `confirmedSlot` and `customerNote`
+  appear once staff have answered."
+  (rs/obj [:id rs/Id] [:reference :string] [:accessToken :string] [:status booking-status] [:createdAt rs/Instant]
+          [:services [:vector service-line]] [:totalRwf rs/Money] [:preferredSlot rs/Slot]
+          [:contactPreference [:enum "email" "whatsapp"]] [:durationMinutes :int]
+          [:agreementAcceptance rs/PublicAcceptance]
+          (rs/opt :confirmedSlot (rs/maybe rs/Slot)) (rs/opt :customerNote (rs/maybe :string))))
+
+(def ^:private admin-booking
+  "Admin session request detail (api-contract.md section 3.3)."
+  (rs/obj [:id rs/Id] [:reference :string] [:status booking-status] [:createdAt rs/Instant] [:customer rs/Customer]
+          [:contactPreference [:enum "email" "whatsapp"]] [:whatsappLink :string]
+          [:services [:vector service-line]] [:totalRwf rs/Money] [:notes (rs/maybe :string)]
+          [:preferredSlot rs/Slot] [:confirmedSlot (rs/maybe rs/Slot)] [:durationMinutes :int]
+          [:slotConflict (rs/maybe [:enum "blocked" "alreadyConfirmed"])] [:payment rs/Payment]
+          [:agreementAcceptance (rs/maybe rs/AgreementAcceptance)] [:messages [:vector rs/Message]]
+          [:internalNotes [:vector rs/Note]] [:history [:vector rs/HistoryEntry]]))
+
+(def ^:private availability-response
+  "Response of `GET /api/availability` (api-contract.md section 2.7)."
+  (rs/obj [:timeZone [:= "Africa/Kigali"]]
+          [:days [:vector (rs/obj [:date rs/Date] [:status [:enum "available" "blocked" "full" "past" "tooSoon" "closed"]]
+                                  (rs/opt :slots [:vector (rs/obj [:startTime rs/Time] [:available :boolean])]))]]))
+
+(def ^:private calendar-response
+  "Response of `GET /api/admin/calendar` (api-contract.md section 3.9)."
+  (rs/obj [:blocks [:vector (rs/obj [:id rs/Id] [:date rs/Date] [:startTime (rs/maybe rs/Time)] [:endTime (rs/maybe rs/Time)]
+                                    [:reason (rs/maybe :string)] [:createdByName :string])]]
+          [:sessions [:vector (rs/obj [:id rs/Id] [:reference :string] [:date rs/Date] [:startTime rs/Time] [:endTime rs/Time]
+                                      [:customerName :string] [:status [:= "confirmed"]])]]
+          [:pending [:vector (rs/obj [:id rs/Id] [:reference :string] [:date rs/Date] [:startTime rs/Time]
+                                     [:customerName :string])]]))
 
 (defn- availability-query!
   "Validates the cross-field rules of the availability query and returns `{:from :to :date :service-ids}`."
@@ -43,28 +84,34 @@
         id-path {:path (s/closed-map [:id s/Id])}
         action (fn [name path f & [schema]]
                  {:name name :method :post :path path :roles staff
-                  :schema (or schema id-path)
+                  :schema (or schema id-path) :response {200 admin-booking}
                   :handler f})]
     [{:name :booking/availability :method :get :path "/api/availability" :public true
+      :response {200 availability-response}
       :schema {:query (s/closed-map [:from {:optional true} s/Date] [:to {:optional true} s/Date]
                                     [:date {:optional true} s/Date] [:serviceIds {:optional true} [:string {:max 500}]])}
       :handler (fn [{{q :query} :params now :now}]
                  (resp/ok (api/availability conn (availability-query! q) now)))}
      {:name :booking/submit :method :post :path "/api/booking-requests" :public true
       :schema {:body submit-schema} :idempotent true :rate-limit :public-post :honeypot true
+      :response {201 public-booking}
       :handler (fn [{{body :body} :params :keys [now ip user-agent idempotency]}]
                  (resp/created (api/submit! deps body {:now now :ip ip :user-agent user-agent :done-tx (:done-tx idempotency)})))}
      {:name :booking/public-get :method :get :path "/api/booking-requests/:reference" :public true
       :schema {:path (s/closed-map [:reference (s/text 1 40)]) :query (s/closed-map [:token (s/text 1 200)])}
+      :response {200 public-booking}
       :handler (fn [{{{:keys [reference]} :path {:keys [token]} :query} :params}]
                  (resp/ok (or (api/public-by-reference deps reference token)
                               (err/fail! :notFound "We could not find that request."))))}
      {:name :booking/admin-list :method :get :path "/api/admin/booking-requests" :roles staff
       :schema {:query (into [:map {:closed true} [:status {:optional true} [:enum "pending" "confirmed" "declined" "completed"]]]
                             s/Pagination)}
+      :response {200 (rs/paginated (rs/obj [:id rs/Id] [:reference :string] [:status booking-status] [:customerName :string]
+                                           [:serviceNames [:vector :string]] [:preferredSlot rs/Slot]
+                                           [:confirmedSlot (rs/maybe rs/Slot)] [:createdAt rs/Instant]))}
       :handler (fn [{{{:keys [status page pageSize]} :query} :params}]
                  (resp/ok (resp/paginated (api/admin-list conn status) page pageSize)))}
-     {:name :booking/admin-get :method :get :path "/api/admin/booking-requests/:id" :roles staff :schema id-path
+     {:name :booking/admin-get :method :get :path "/api/admin/booking-requests/:id" :roles staff :schema id-path :response {200 admin-booking}
       :handler (fn [{{{:keys [id]} :path} :params}] (resp/ok (api/admin-detail conn id)))}
      (action :booking/confirm "/api/admin/booking-requests/:id/confirm"
              (fn [{{{:keys [id]} :path body :body} :params user :user now :now}]
@@ -82,17 +129,18 @@
              (fn [{{{:keys [id]} :path body :body} :params user :user now :now}]
                (resp/ok (api/mark-paid! deps id body (:name user) now)))
              (assoc id-path :body (s/closed-map [:method [:enum "cash" "mobileMoney"]] [:amountRwf [:int {:min 1}]])))
-     {:name :booking/complete :method :post :path "/api/admin/booking-requests/:id/complete" :roles staff :no-input true
+     {:name :booking/complete :method :post :path "/api/admin/booking-requests/:id/complete" :roles staff :no-input true :response {200 admin-booking}
       :handler (fn [{{:keys [id]} :path-params user :user now :now}] (resp/ok (api/complete! deps id (:name user) now)))}
-     (action :booking/note "/api/admin/booking-requests/:id/notes"
-             (fn [{{{:keys [id]} :path {:keys [text]} :body} :params user :user now :now}]
-               (resp/created (api/add-note! deps id text (:name user) now)))
-             (assoc id-path :body (s/closed-map [:text (s/text 1 1000)])))
+     (assoc (action :booking/note "/api/admin/booking-requests/:id/notes"
+                    (fn [{{{:keys [id]} :path {:keys [text]} :body} :params user :user now :now}]
+                      (resp/created (api/add-note! deps id text (:name user) now)))
+                    (assoc id-path :body (s/closed-map [:text (s/text 1 1000)])))
+            :response {201 rs/Note})
      {:name :booking/resend :method :post :path "/api/admin/booking-requests/:id/messages/:message-id/resend" :roles staff
-      :schema {:path (s/closed-map [:id s/Id] [:message-id s/Id])}
+      :schema {:path (s/closed-map [:id s/Id] [:message-id s/Id])} :response {202 rs/Message}
       :handler (fn [{{{:keys [id message-id]} :path} :params now :now}] (resp/accepted (api/resend! deps id message-id now)))}
      {:name :booking/calendar :method :get :path "/api/admin/calendar" :roles staff
-      :schema {:query (s/closed-map [:from s/Date] [:to s/Date])}
+      :schema {:query (s/closed-map [:from s/Date] [:to s/Date])} :response {200 calendar-response}
       :handler (fn [{{{:keys [from to]} :query} :params}]
                  (when (> (count (t/date-range (t/parse-date from) (t/parse-date to))) 366)
                    (err/fail! :validationFailed "The range is too long." {:to "at most 366 days"}))

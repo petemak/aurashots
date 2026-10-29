@@ -11,6 +11,7 @@
             [aurashots.features.site.api :as site]
             [aurashots.features.storefront.api :as storefront]
             [aurashots.platform.http-core.response :as resp]
+            [aurashots.platform.http-core.response-schemas :as rs]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [taoensso.timbre :as log])
@@ -58,11 +59,11 @@
       (missing-file file))))
 
 (defn- seo-image
-  "Absolute path of the best Open Graph image: the item's own image unless it is the placeholder, else the
-  featured portfolio image, else nil."
-  [{:keys [conn featured-image]} item-image]
-  (let [img (if (and item-image (not= media/placeholder-id (:id item-image))) item-image (featured-image conn))]
-    (:url img)))
+  "Path of the item's own Open Graph image, or nil when it has none or only the placeholder (the page then gets
+  the shared `/assets/og-image.png`)."
+  [_deps item-image]
+  (when (and item-image (not= media/placeholder-id (:id item-image)))
+    (:url item-image)))
 
 (defn- dynamic-page
   "Handler serving `file` with its SEO region rewritten by `seo-fn`, a function of the request returning the SEO map
@@ -72,7 +73,7 @@
     (if-let [seo (seo-fn req)]
       (if-let [html (read-page (:web-root config) file)]
         (html-response 200
-                       (cond-> (core/rewrite-seo html (core/seo-region seo))
+                       (cond-> (core/rewrite-seo html (core/seo-region (core/with-default-image seo (:public-base-url config))))
                          data-fn (core/rewrite-data (data-fn req)))
                        :dynamic)
         (missing-file file))
@@ -92,24 +93,42 @@
                    "Cache-Control" "public, max-age=31536000, immutable"}}
         (not-found deps)))))
 
+(defn- production-base-url
+  "The origin used for sitemap URLs. In production it is the public base URL; elsewhere it is the configured
+  `:production-base-url` (never the staging host), or nil, which yields an empty sitemap."
+  [config]
+  (if (= :prod (:app-env config))
+    (:public-base-url config)
+    (:production-base-url config)))
+
 (defn- sitemap
   "Builds the sitemap response from published services and products plus the indexable static pages."
   [{:keys [conn config]}]
-  (let [base (:public-base-url config)
-        urls (concat (map #(str base %) core/indexable-static-paths)
-                     (map #(str base "/services/" %) (catalog/published-slugs conn))
-                     (map #(str base "/shop/" %) (merch/published-slugs conn)))]
+  (let [base (production-base-url config)
+        urls (when base
+               (concat (map #(str base %) core/indexable-static-paths)
+                       (map #(str base "/services/" %) (catalog/published-slugs conn))
+                       (map #(str base "/shop/" %) (merch/published-slugs conn))))]
     {:status 200 :headers {"Content-Type" "application/xml; charset=utf-8" "Cache-Control" resp/public-cache}
      :body (core/sitemap-xml urls)}))
 
-(defn routes
-  "Returns the route specs of the pages slice. `deps` keys: `:conn`, `:config`, `:featured-image` (function
-  `(conn) -> Image|nil` injected from the portfolio slice by `system`)."
+(defn- noindex-html
+  "Wraps `handler` so that HTML responses carry `X-Robots-Tag: noindex` (used outside production)."
+  [handler]
+  (fn [req]
+    (let [r (handler req)]
+      (if (some-> (get-in r [:headers "Content-Type"]) (str/starts-with? "text/html"))
+        (assoc-in r [:headers "X-Robots-Tag"] "noindex")
+        r))))
+
+(defn- page-routes
+  "Returns the route specs of the pages slice before environment-specific wrapping."
   [{:keys [conn config] :as deps}]
   (let [base (:public-base-url config)
         owner (:owner-email config)
         info (fn [] (site/public-info conn owner))
-        public (fn [name path handler] {:name name :method :get :path path :public true :no-input true :handler handler})
+        public (fn [name path handler] {:name name :method :get :path path :public true :no-input true
+                                        :response {200 rs/Raw} :handler handler})
         page (fn [name path file kind] (public name path (static-page deps file kind)))
         legal (fn [slug]
                 (public (keyword "pages" (str "legal-" slug)) (str "/legal/" slug)
@@ -122,7 +141,7 @@
      (public :pages/service "/services/:slug"
              (dynamic-page deps "site/service.html"
                            (fn [req] (when-let [d (storefront/service-detail conn (get-in req [:path-params :slug]))]
-                                       (core/service-seo base (assoc-in d [:mainImage :url] (or (seo-image deps (:mainImage d)) (get-in d [:mainImage :url]))) (info))))
+                                       (core/service-seo base (assoc-in d [:mainImage :url] (seo-image deps (:mainImage d))) (info))))
                            (fn [req] (storefront/service-detail conn (get-in req [:path-params :slug])))))
      (page :pages/portfolio "/portfolio" "site/portfolio.html" :static)
      (page :pages/shop "/shop" "site/shop.html" :static)
@@ -131,7 +150,7 @@
      (public :pages/product "/shop/:slug"
              (dynamic-page deps "site/product.html"
                            (fn [req] (when-let [d (storefront/product-detail conn (get-in req [:path-params :slug]))]
-                                       (core/product-seo base (assoc-in d [:mainImage :url] (or (seo-image deps (:mainImage d)) (get-in d [:mainImage :url]))))))
+                                       (core/product-seo base (assoc-in d [:mainImage :url] (seo-image deps (:mainImage d))))))
                            (fn [req] (storefront/product-detail conn (get-in req [:path-params :slug])))))
      (page :pages/cart-sessions "/cart/sessions" "site/cart-sessions.html" :noindex)
      (page :pages/cart-merchandise "/cart/merchandise" "site/cart-merchandise.html" :noindex)
@@ -147,5 +166,16 @@
      (public :pages/sitemap "/sitemap.xml" (fn [_] (sitemap deps)))
      (public :pages/robots "/robots.txt"
              (fn [_] {:status 200 :headers {"Content-Type" "text/plain; charset=utf-8" "Cache-Control" resp/public-cache}
-                      :body (core/robots-txt base)}))
-     (public :pages/health "/api/health" (fn [_] (resp/ok {:status "ok"})))]))
+                      :body (if (= :prod (:app-env config)) (core/robots-txt base) core/robots-disallow-all)}))
+     (assoc (public :pages/health "/api/health" (fn [_] (resp/ok {:status "ok"})))
+            :response {200 (rs/obj [:status [:= "ok"]])})]))
+
+(defn routes
+  "Returns the route specs of the pages slice. Outside production (`:app-env` not `:prod`) every HTML response
+  gets `X-Robots-Tag: noindex` and `/robots.txt` disallows everything. `deps` keys: `:conn`, `:config`,
+  `:featured-image` (function `(conn) -> Image|nil` injected from the portfolio slice by `system`)."
+  [deps]
+  (let [specs (page-routes deps)]
+    (if (= :prod (:app-env (:config deps)))
+      specs
+      (mapv #(update % :handler noindex-html) specs))))

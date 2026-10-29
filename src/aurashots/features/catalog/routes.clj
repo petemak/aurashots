@@ -8,6 +8,7 @@
             [aurashots.features.media.api :as media]
             [aurashots.features.merch.api :as merch]
             [aurashots.platform.http-core.response :as resp]
+            [aurashots.platform.http-core.response-schemas :as rs]
             [aurashots.platform.http-core.schemas :as s]
             [aurashots.shared.errors :as err]
             [aurashots.shared.refs :as refs]))
@@ -30,6 +31,25 @@
    [:featured :boolean]
    [:status [:enum "published" "hidden"]]
    [:sortOrder [:int {:min 0 :max 100000}]]))
+
+(def ^:private admin-image
+  "An image attached to a service in the admin record: reference, alt and the expanded image fields."
+  (rs/obj [:imageId rs/Id] [:alt :string] [:url :string] [:thumbUrl :string] [:width :int] [:height :int]))
+
+(def ^:private admin-service
+  "Full admin service record (api-contract.md section 3.5): the body fields plus id, slug, `needsPrice`, `mainImage`."
+  (rs/obj [:id rs/Id] [:slug :string] [:name :string] [:shortDescription :string] [:description :string]
+          [:priceRwf (rs/maybe rs/Money)] [:sessionMinutes (rs/maybe :int)] [:contents rs/Contents]
+          [:conditions :string] [:relatedProductIds [:vector rs/Id]] [:images [:vector admin-image]]
+          [:featured :boolean] [:status [:enum "published" "hidden"]] [:sortOrder :int]
+          [:needsPrice :boolean] [:mainImage (rs/maybe rs/Image)]))
+
+(def ^:private quote-response
+  "Response of `POST /api/quotes/sessions` (api-contract.md section 2.8). Contract mismatch kept on purpose: for an
+  id that is unknown (reason `removed`) `name` and `priceRwf` are null, while the contract shows a string name."
+  (rs/obj [:items [:vector (rs/obj [:serviceId rs/Id] [:name (rs/maybe :string)] [:priceRwf (rs/maybe rs/Money)] [:available :boolean]
+                                   [:reason (rs/maybe [:enum "unpublished" "noPrice" "removed"])] [:mainImage rs/Image])]]
+          [:totalRwf rs/Money]))
 
 (defn- admin-record
   "Builds the admin service record: all stored fields, images expanded for editing, and `needsPrice`."
@@ -72,9 +92,10 @@
   (let [staff #{:owner :support}
         id-path {:path (s/closed-map [:id s/Id])}]
     [{:name :catalog/list :method :get :path "/api/services" :public true :no-input true
+      :response {200 (rs/items rs/Service)}
       :handler (fn [_] (resp/cached {:items (mapv #(api/service-view conn %) (api/published-services conn))}))}
      {:name :catalog/quote :method :post :path "/api/quotes/sessions" :public true
-      :schema {:body (s/closed-map [:serviceIds [:vector {:min 1 :max 10} s/Id]])}
+      :schema {:body (s/closed-map [:serviceIds [:vector {:min 1 :max 10} s/Id]])} :response {200 quote-response}
       :handler (fn [{{{:keys [serviceIds]} :body} :params}]
                  (let [items (mapv (fn [id] (let [svc (store/get-by-id conn id)]
                                               (core/quote-item id svc (if svc (api/main-image conn svc) (media/placeholder-view conn)))))
@@ -83,6 +104,9 @@
                     :body {:items items :totalRwf (core/quote-total items)}}))}
      {:name :catalog/admin-list :method :get :path "/api/admin/services" :roles staff
       :schema {:query (s/closed-map [:status {:optional true} [:enum "published" "hidden" "removed"]])}
+      :response {200 (rs/items (rs/obj [:id rs/Id] [:name :string] [:priceRwf (rs/maybe rs/Money)]
+                                       [:status [:enum "published" "hidden" "removed"]] [:needsPrice :boolean]
+                                       [:mainImage (rs/maybe rs/Image)]))}
       :handler (fn [{{{:keys [status]} :query} :params}]
                  (resp/ok {:items (mapv (fn [sv] {:id (:id sv) :name (:name sv) :priceRwf (:priceRwf sv)
                                                   :status (name (:status sv))
@@ -90,20 +114,23 @@
                                                   :mainImage (when (seq (:images sv)) (api/main-image conn sv))})
                                         (store/list-by-status conn (if status [(keyword status)] [:published :hidden])))}))}
      {:name :catalog/admin-get :method :get :path "/api/admin/services/:id" :roles staff :schema id-path
+      :response {200 admin-service}
       :handler (fn [{{{:keys [id]} :path} :params}] (resp/ok (admin-record conn (find-active! conn id))))}
      {:name :catalog/admin-create :method :post :path "/api/admin/services" :roles staff :schema {:body body-schema}
+      :response {201 admin-service}
       :handler (fn [{{body :body} :params}] (resp/created (admin-record conn (save-service! conn body nil))))}
      {:name :catalog/admin-update :method :put :path "/api/admin/services/:id" :roles staff
-      :schema (assoc id-path :body body-schema)
+      :schema (assoc id-path :body body-schema) :response {200 admin-service}
       :handler (fn [{{{:keys [id]} :path body :body} :params}]
                  (resp/ok (admin-record conn (save-service! conn body (find-active! conn id)))))}
      {:name :catalog/admin-delete :method :delete :path "/api/admin/services/:id" :roles staff :schema id-path
+      :response {204 rs/NoBody}
       :handler (fn [{{{:keys [id]} :path} :params}]
                  (let [sv (find-active! conn id)]
                    (store/save! conn (assoc sv :status :removed))
                    (resp/no-content)))}
      {:name :catalog/admin-order :method :put :path "/api/admin/service-order" :roles staff
-      :schema {:body (s/closed-map [:ids [:vector {:max 200} s/Id]])}
+      :schema {:body (s/closed-map [:ids [:vector {:max 200} s/Id]])} :response {204 rs/NoBody}
       :handler (fn [{{{:keys [ids]} :body} :params}]
                  (when (some #(nil? (store/get-by-id conn %)) ids)
                    (err/fail! :validationFailed "Some services could not be found." {:ids "unknown service id"}))

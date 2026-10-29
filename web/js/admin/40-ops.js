@@ -76,11 +76,13 @@
         submit: function () { return AS.api.post("/admin/calendar/blocks", { fromDate: from.value(), toDate: kind === "range" ? to.value() : from.value(), startTime: kind === "hours" ? st.value() : null, endTime: kind === "hours" ? en.value() : null, reason: reason.value() || null }); },
         done: function (res) {
           AS.toast("Blocked");
+          // Redraw first: load() clears the side panel, so the warning goes in afterwards.
+          load().then(function () {
           if (res && res.affectedSessions && res.affectedSessions.length) {
             side.prepend(AS.alertBox("warning", h("div", {}, h("p", { text: "These confirmed sessions are in the blocked time. They are not cancelled, so please contact the customers:" }),
               h("ul", {}, res.affectedSessions.map(function (s) { return h("li", {}, h("a", { href: "/admin/session-requests/" + s.id, text: (s.customerName || s.reference) + " · " + fmt.date(s.date) + " " + (s.startTime || "") })); })))));
           }
-          load();
+          });
         }
       });
     }
@@ -242,11 +244,11 @@
   A.route("/admin/staff/new", { id: "A18", title: "Add a staff member", roles: ["owner"] }, function (ctx) {
     var name = F.field({ id: "sf-name", name: "name", label: "Name", required: true, maxlength: 100 }), email = F.field({ id: "sf-email", name: "email", label: "Email", required: true, type: "email", maxlength: 254 });
     var btn = h("button", { type: "submit", class: "btn btn--lg" }, "Send invitation");
-    var form = h("form", { novalidate: true, class: "panel" }, name.el, email.el, h("p", { class: "muted", text: "They will join as support staff. We email them a link to choose a password." }), h("div", { class: "form-actions" }, btn, h("a", { class: "btn btn--secondary", href: "/admin/staff", text: "Cancel" })));
+    var form = h("form", { novalidate: true, class: "panel" }, name.el, email.el, h("p", { class: "muted", text: "They will join as support staff. You get a one-time link to send them so they can choose a password." }), h("div", { class: "form-actions" }, btn, h("a", { class: "btn btn--secondary", href: "/admin/staff", text: "Cancel" })));
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       if (!F.validate([{ field: name, check: F.V.name }, { field: email, check: F.V.email }])) { return; }
-      A.busy(btn, function () { return AS.api.post("/admin/staff", { name: name.value(), email: email.value() }); }).then(function () { AS.toast("Invitation sent to " + email.value() + "."); A.go("/admin/staff"); },
+      A.busy(btn, function () { return AS.api.post("/admin/staff", { name: name.value(), email: email.value() }); }).then(function (r) { form.remove(); A.linkPanel(ctx.main, { heading: "Invitation link", name: name.value(), url: r.invitationUrl, expiry: "72 hours", emailQueued: r.emailQueued, id: "sf-link" }); },
         function (err) { if (err.code === "conflict") { email.setError("That email already has an account."); email.input.focus(); } else { A.formError(err, { name: name, email: email }); } });
     });
     ctx.main.appendChild(h("p", {}, h("a", { href: "/admin/staff", text: "Back to staff accounts" }))); ctx.main.appendChild(form);
@@ -259,8 +261,8 @@
         ctx.main.appendChild(h("p", {}, h("a", { href: "/admin/staff", text: "Back to staff accounts" })));
         ctx.main.appendChild(h("section", { class: "panel" }, h("h2", { text: u.name }), A.dl([["Email", u.email], ["Role", u.role === "owner" ? "Owner" : "Support staff"], ["Access", u.active ? "On" : "Switched off"], ["Last signed in", u.lastSignInAt ? AS.fmt.instant(u.lastSignInAt) : "Not yet"]])));
         var acts = h("div", { class: "decision" }), me = A.user && A.user.id === u.id;
-        var reset = h("button", { type: "button", class: "btn btn--secondary", text: "Send a password reset link" });
-        reset.addEventListener("click", function () { A.busy(reset, function () { return AS.api.post("/admin/staff/" + u.id + "/reset-password-link"); }).then(function () { AS.toast("A reset link is on its way."); }, A.fail); });
+        var linkHost = h("div"), reset = h("button", { type: "button", class: "btn btn--secondary", text: "Get a new sign-in link" });
+        reset.addEventListener("click", function () { A.busy(reset, function () { return AS.api.post("/admin/staff/" + u.id + "/reset-password-link"); }).then(function (r) { AS.clear(linkHost); A.linkPanel(linkHost, { heading: "Sign-in link", name: u.name, url: r.url, expiry: r.kind === "invitation" ? "72 hours" : "60 minutes", emailQueued: r.emailQueued, id: "sf-link2" }); }, A.fail); });
         acts.appendChild(reset);
         if (u.role !== "owner" && !me) {
           var sw = h("button", { type: "button", class: "btn btn--secondary", text: u.active ? "Switch off access" : "Switch on access" });
@@ -269,7 +271,7 @@
           rm.addEventListener("click", function () { AS.confirm({ title: "Are you sure? This cannot be undone.", body: "Their past actions stay in the records under their name.", confirmLabel: "Yes, remove", danger: true }).then(function (ok) { if (ok) { A.busy(rm, function () { return AS.api.del("/admin/staff/" + u.id); }).then(function () { AS.toast("Removed"); A.go("/admin/staff"); }, A.fail); } }); });
           acts.appendChild(sw); acts.appendChild(rm);
         }
-        ctx.main.appendChild(A.section("What you can do", "sf-do")); ctx.main.lastChild.appendChild(acts);
+        ctx.main.appendChild(A.section("What you can do", "sf-do")); ctx.main.lastChild.appendChild(acts); ctx.main.appendChild(linkHost);
       });
     }
     return load();

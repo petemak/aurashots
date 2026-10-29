@@ -257,3 +257,7 @@ Hero: full-bleed photo, `--gradient-hero-scrim` at the bottom, logo, tagline in 
 3. **Do** state price as "50,000 RwF" in Inter 600 with tabular figures and show what is included beside it; **do not** hide prices, use USD, or set prices in the serif.
 4. **Do** keep every control 48px or more with a visible 3px focus ring and a text label; **do not** rely on colour alone, remove outlines, or use placeholders as labels.
 5. **Do** use the real logo files, Tabler icons at 1.5px stroke and the specified photo ratios (3:4, 4:5, 16:9); **do not** use the retired slogan, set live text in script, mix icon sets, crop with white borders, or use stock or random photos.
+
+## 13. Social sharing image
+
+`assets/og-image.png` (1200x630, about 49 KB; source `assets/og-image.svg`) is the preview for `og:image` and `twitter:image` (`summary_large_image`). Noir background, the real `logo.svg` lockup unchanged, the tagline "Not just photos…it's an aura" in Cormorant Garamond 600 (Pearl), one Aura Pink rule, and "KIGALI, RWANDA" in Inter 500 (Mist). No photos. All content sits inside the central safe area of 1080x566 (60px left/right, 32px top/bottom margins) because platforms crop. Text is converted to outlines in the SVG, so rendering needs no installed fonts. Regenerate when the tagline, logo, location or palette tokens change, by running `scripts/design/og_image.py` (instructions at the top of that file; it writes both the SVG and the 1200x630 PNG). Do not edit the outlined text in the SVG by hand. Keep the file under 300 KB.

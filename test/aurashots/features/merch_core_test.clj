@@ -34,3 +34,28 @@
            (select-keys (orders/quote-body results lines nil) [:subtotalRwf :deliveryFeeRwf :totalRwf :feeNote])))
     (is (= {:totalRwf 17000 :feeNote nil}
            (select-keys (orders/quote-body results lines {:feeRwf 2000}) [:totalRwf :feeNote])))))
+
+(deftest ^{:doc "QA D4 sequence A: mark sold out, re-enable options via PATCH availability with optionId."} reenable-option-clears-sold-out
+  (let [sold (core/set-availability product nil false)
+        _ (is (= "soldOut" (core/availability sold)))
+        one (core/set-availability sold "m" true)
+        both (core/set-availability one "k" true)]
+    (is (= "soldOut" (core/availability sold)))
+    (is (= "inStock" (core/availability both)) "all groups have an option in stock again")
+    (is (true? (:inStock both)))
+    (is (= "soldOut" (core/availability (core/set-availability both "m" false))) "disabling the only size still sells out")
+    (is (false? (:inStock (core/set-availability (core/set-availability product nil false) "k" false))) "disabling never raises the flag")))
+
+(deftest ^{:doc "QA D4 sequence B: mark sold out, tick options in the edit form and save."} edit-form-save-clears-sold-out
+  (let [sold (core/set-availability product nil false)
+        body {:name "Aura Tee" :priceRwf 15000 :status :published
+              :optionGroups [{:name "Size" :options [{:id "m" :label "M" :inStock true} {:id "l" :label "L" :inStock true}]}
+                             {:name "Colour" :options [{:id "k" :label "Black" :inStock true}]}]}
+        saved (core/build-product body {:existing sold :now (Instant/now)})]
+    (is (true? (:inStock saved)))
+    (is (= "inStock" (core/availability saved))))
+  (let [sold (core/set-availability product nil false)
+        body {:name "Aura Tee" :priceRwf 15000 :status :published
+              :optionGroups (:optionGroups sold)}
+        saved (core/build-product body {:existing sold :now (Instant/now)})]
+    (is (= "soldOut" (core/availability saved)) "an unchanged sold-out form stays sold out")))

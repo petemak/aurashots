@@ -17,6 +17,7 @@
    [:app-env [:enum :dev :staging :prod]]
    [:http [:map [:host :string] [:port pos-int?] [:trusted-proxy-hops nat-int?] [:cookie-secure :boolean]]]
    [:public-base-url [:re #"^https?://.+"]]
+   [:production-base-url [:maybe [:re #"^https?://.+"]]]
    [:data-dir :string]
    [:upload-dir :string]
    [:web-root :string]
@@ -27,7 +28,9 @@
    [:log-level [:enum :trace :debug :info :warn :error]]
    [:seed-images-dir :string]
    [:outbox-interval-ms pos-int?]
-   [:housekeeping-interval-ms pos-int?]])
+   [:housekeeping-interval-ms pos-int?]
+   [:weekly-export [:map [:day [:enum :mon :tue :wed :thu :fri :sat :sun]] [:hour [:int {:min 0 :max 23}]] [:keep pos-int?]]]
+   [:response-check [:enum :off :log :throw]]])
 
 (defn- deep-merge
   "Recursively merges maps; non-map values in `b` win, and a nil `b` leaves `a` unchanged."
@@ -70,11 +73,16 @@
                  (update :upload-dir #(or (blank->nil %) (str (io/file data-dir "uploads"))))
                  (update :backup-dir #(or (blank->nil %) (str (io/file data-dir "backups"))))
                  (update :owner-email blank->nil)
+                 (update :production-base-url #(some-> (blank->nil %) (str/replace #"/+$" "")))
                  (update-in [:smtp :user] blank->nil)
                  (update-in [:smtp :password] blank->nil)
                  (update :public-base-url #(str/replace (str %) #"/+$" ""))
                  (update :token-pepper #(or (blank->nil %)
                                             (when (= :dev (:app-env merged)) (dev-pepper data-dir)))))]
+     (when (and (#{:staging :prod} (:app-env merged)) (str/blank? (:public-base-url cfg)))
+       (throw (ex-info (str "PUBLIC_BASE_URL must be set when APP_ENV is " (name (:app-env merged))
+                            " (the https origin of the site, used for canonical URLs, emails and the sitemap)")
+                       {:missing "PUBLIC_BASE_URL"})))
      (when-not (m/validate Config cfg)
        (throw (ex-info "Invalid configuration"
                        {:errors (me/humanize (m/explain Config (update cfg :token-pepper #(when % "<redacted>"))))})))

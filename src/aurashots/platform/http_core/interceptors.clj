@@ -2,13 +2,14 @@
   "Shared Pedestal interceptors and the route-spec compiler (architecture.md section 2.2, `http-core`).
   A slice describes a route as a data map
   `{:name kw :method :get :path \"/api/..\" :handler f (:public true | :roles #{..}) (:schema {:path :query :body}
-  | :no-input true) [:idempotent true] [:rate-limit :public-post] [:honeypot true]}`; `compile-route` turns it into
+  | :no-input true) :response {status schema} [:idempotent true] [:rate-limit :public-post] [:honeypot true]}`; `compile-route` turns it into
   a Pedestal route vector with the chain rate limit, authentication, role, CSRF, validation, idempotency and
   handler. A route with neither `:public` nor `:roles` makes startup fail (default deny)."
   (:require [aurashots.platform.crypto :as crypto]
             [aurashots.platform.http-core.errors :as errors]
             [aurashots.platform.http-core.json :as json]
             [aurashots.platform.http-core.limits :as limits]
+            [aurashots.platform.http-core.response-check :as response-check]
             [aurashots.platform.http-core.store :as store]
             [aurashots.platform.http-core.validate :as validate]
             [aurashots.shared.errors :as err]
@@ -208,12 +209,13 @@
                                        "That Idempotency-Key was already used with a different request.")))))})
 
 (defn- handler-interceptor
-  "Runs the route handler with a plain request map and stores its returned response map."
-  [handler]
+  "Runs the route handler with a plain request map, passes the returned response map through `check` (response
+  schema checking, see `response-check`) and stores it."
+  [handler check]
   {:name ::handler
    :enter (fn [ctx]
             (let [req (:request ctx)]
-              (assoc ctx :response (handler req))))})
+              (assoc ctx :response (check (handler req)))))})
 
 (defn- assert-spec!
   "Fails startup when a route spec lacks access metadata or an input schema declaration."
@@ -232,10 +234,11 @@
   [deps spec]
   (assert-spec! spec)
   (let [{:keys [name method path handler roles schema idempotent rate-limit]} spec
+        check (response-check/compile-checker (get-in deps [:config :response-check]) spec)
         chain (cond-> []
                 rate-limit (conj (rate-limit-interceptor deps))
                 (seq roles) (conj (auth-interceptor deps roles))
                 schema (conj (validation-interceptor spec))
                 idempotent (conj (idempotency-interceptor deps (clojure.core/name name)))
-                true (conj (handler-interceptor handler)))]
+                true (conj (handler-interceptor handler check)))]
     [path method chain :route-name name]))

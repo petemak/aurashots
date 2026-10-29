@@ -18,17 +18,19 @@
   (str (Files/createTempDirectory "aurashots-test" (make-array FileAttribute 0))))
 
 (defn start-system
-  "Starts the system for tests. `opts`: `:web-root` (string), `:now` (Instant, default 2026-10-29T08:00:00Z),
+  "Starts the system for tests. `opts`: `:web-root` (string), `:config` (map deep-merged over the config), `:now` (Instant, default 2026-10-29T08:00:00Z),
   `:mail` (fn of message, default records into the returned `:sent` atom). Returns a map with `:system`, `:clock`
   (atom of Instant), `:sent` (atom of sent mails) and `:connector`."
-  [& [{:keys [web-root now mail]}]]
+  [& [{:keys [web-root now mail config]}]]
   (let [clock (atom (or now (Instant/parse "2026-10-29T08:00:00Z")))
         sent (atom [])
         dir (temp-dir)
         sys (system/start {:overrides (cond-> {:data-dir dir :http {:port 18080 :host "localhost" :trusted-proxy-hops 1}
                                                :token-pepper "test-only-pepper-0123456789abcdef"
-                                               :outbox-interval-ms 3600000 :housekeeping-interval-ms 3600000}
-                                        web-root (assoc :web-root web-root))
+                                               :outbox-interval-ms 3600000 :housekeeping-interval-ms 3600000
+                                               :response-check :throw}
+                                        web-root (assoc :web-root web-root)
+                                        config (merge config))
                            :now-fn #(deref clock)
                            :send-fn (or mail (fn [m] (swap! sent conj m) true))
                            :start? false})]

@@ -7,7 +7,10 @@
         :trusted-proxy-hops #long #or [#env TRUSTED_PROXY_HOPS 0]
         :cookie-secure #boolean #or [#env COOKIE_SECURE #profile {:dev false :default true}]}
 
- :public-base-url #or [#env PUBLIC_BASE_URL "http://localhost:8080"]
+ ;; Required when APP_ENV is staging or prod (startup fails without it); the localhost default exists for dev only.
+ :public-base-url #or [#env PUBLIC_BASE_URL #profile {:dev "http://localhost:8080" :default nil}]
+ ;; Origin used for sitemap.xml outside production (never the staging host). Unset: the staging sitemap is empty.
+ :production-base-url #env PRODUCTION_BASE_URL
  :data-dir #or [#env DATA_DIR "data"]
  :upload-dir #env UPLOAD_DIR
  :web-root #or [#env WEB_ROOT "dist/web"]
@@ -26,4 +29,10 @@
  :log-level #keyword #or [#env LOG_LEVEL #profile {:dev "debug" :default "info"}]
  :seed-images-dir "business/images/shots"
  :outbox-interval-ms 15000
- :housekeeping-interval-ms 600000}
+ :housekeeping-interval-ms 600000
+
+ ;; Weekly logical export written to the backups area: weekday and hour in Africa/Kigali time, newest `keep` files kept.
+ :weekly-export {:day :sun :hour 3 :keep 8}
+
+ ;; Response-schema checking of every route (architecture.md section 5): :log in dev, :off elsewhere. Tests use :throw.
+ :response-check #profile {:dev :log :default :off}}

@@ -2,8 +2,12 @@
   "Integration tests of the admin API (api-contract.md section 3): authentication, CSRF, roles, the session request
   and order state machines (including idempotent repeats and the confirm race), catalogue, portfolio, calendar,
   settings, staff, documents and the outbox."
-  (:require [aurashots.features.notifications.api :as notifications]
+  (:require [aurashots.features.auth.api :as auth]
+            [aurashots.features.auth.store :as auth-store]
+            [aurashots.features.notifications.api :as notifications]
+            [aurashots.platform.crypto :as crypto]
             [aurashots.test-helpers :as h :refer [call uuid]]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing use-fixtures]])
   (:import (java.awt.image BufferedImage)
            (java.io ByteArrayInputStream ByteArrayOutputStream)
@@ -302,8 +306,58 @@
         (is (= 401 (:status (call e :post "/api/admin/auth/login" {:body {:email "temp@example.test" :password "another long password 12"} :ip "5.5.5.5"}))))
         (is (= 200 (:status (call e :patch (str "/api/admin/staff/" tmp-id) {:session @owner :body {:active true}}))))
         (is (= 204 (:status (call e :delete (str "/api/admin/staff/" tmp-id) {:session @owner}))))))
-    (testing "reset link is emailed (queued)"
-      (is (= 202 (:status (call e :post (str "/api/admin/staff/" support-id "/reset-password-link") {:session @owner})))))))
+    (testing "reset link is returned once in the response (amendment A1)"
+      (let [r (call e :post (str "/api/admin/staff/" support-id "/reset-password-link") {:session @owner})
+            b (:body r)]
+        (is (= 200 (:status r)))
+        (is (= #{:kind :url :expiresAt :emailQueued} (set (keys b))))
+        (is (= "reset" (:kind b)))
+        (is (str/starts-with? (:url b) "http://localhost:8080/admin/reset-password?token="))
+        (is (false? (:emailQueued b)) "SMTP is not configured in tests")
+        (is (= 404 (:status (call e :post "/api/admin/staff/nope/reset-password-link" {:session @owner}))))
+        (is (= 403 (:status (call e :post (str "/api/admin/staff/" support-id "/reset-password-link") {:session @support}))))))))
+
+(defn- token-of
+  "The raw token inside an admin link."
+  [url]
+  (second (re-find #"token=(.*)$" url)))
+
+(deftest ^{:doc "Tests invitation links in the staff API (amendment A1)."} staff-invitation-links
+  (let [e @env
+        r (call e :post "/api/admin/staff" {:session @owner :body {:name "Pending Person" :email "pending@example.test"}})
+        b (:body r)
+        id (:id b)]
+    (is (= 201 (:status r)))
+    (is (true? (:invitationPending b)))
+    (is (str/starts-with? (:invitationUrl b) "http://localhost:8080/admin/reset-password?token="))
+    (is (string? (:invitationExpiresAt b)))
+    (is (false? (:emailQueued b)))
+    (testing "a fresh link for a pending member is an invitation and replaces the earlier one"
+      (let [r2 (call e :post (str "/api/admin/staff/" id "/reset-password-link") {:session @owner})
+            first-token (token-of (:invitationUrl b))
+            new-token (token-of (get-in r2 [:body :url]))]
+        (is (= 200 (:status r2)))
+        (is (= "invitation" (get-in r2 [:body :kind])))
+        (is (not= first-token new-token))
+        (is (= 400 (:status (call e :post "/api/admin/auth/reset-password" {:body {:token first-token :newPassword "a brand new long password"}}))) "old link is dead")
+        (testing "the stored token is hashed, the link works once"
+          (let [conn (get-in e [:system :aurashots/db])]
+            (is (nil? (auth-store/get-token conn new-token)) "the raw token is not what is stored"))
+          (is (= 204 (:status (call e :post "/api/admin/auth/reset-password" {:body {:token new-token :newPassword "a brand new long password"}}))))
+          (is (= 400 (:status (call e :post "/api/admin/auth/reset-password" {:body {:token new-token :newPassword "a brand new long password"}}))))
+          (is (false? (get-in (call e :get (str "/api/admin/staff/" id) {:session @owner}) [:body :invitationPending]))))
+        (testing "after acceptance the next link is a reset link"
+          (is (= "reset" (get-in (call e :post (str "/api/admin/staff/" id "/reset-password-link") {:session @owner}) [:body :kind]))))))))
+
+(deftest ^{:doc "Tests the owner CLI link."} owner-cli-link
+  (let [e @env
+        sys (:system e)
+        deps {:conn (:aurashots/db sys) :config (:aurashots/config sys)
+              :pepper (get-in sys [:aurashots/config :token-pepper]) :now @(:clock e)}
+        {:keys [kind url]} (auth/owner-link! deps)]
+    (is (= "reset" kind))
+    (is (str/starts-with? url "http://localhost:8080/admin/reset-password?token="))
+    (is (some? (auth-store/get-token (:conn deps) (crypto/hmac-hex (:pepper deps) (str "ptoken:" (token-of url))))))))
 
 (deftest ^{:doc "Tests merchandise order lifecycle."} merchandise-order-lifecycle
   (let [e @env

@@ -156,6 +156,34 @@
     return Promise.resolve().then(fn).then(function (r) { btn.disabled = false; btn.setAttribute("aria-busy", "false"); return r; }, function (err) { btn.disabled = false; btn.setAttribute("aria-busy", "false"); throw err; });
   };
   A.section = function (title, id) { return h("section", { class: "panel", "aria-labelledby": id }, h("h2", { id: id, text: title })); };
+  // One-time staff link panel (api-contract.md 3.12, A1). o = {heading, name, url, expiry, emailQueued, id}
+  var LINK_WARNING = "This link cannot be shown again. Leave this page?", linkPanelEl = null, linkPanelPath = null;
+  function linkLeaveOk() {
+    if (!linkPanelEl || !document.body.contains(linkPanelEl)) { return true; }
+    return window.confirm(LINK_WARNING);
+  }
+  A.linkPanel = function (host, o) {
+    var field = h("input", { class: "input", id: o.id + "-url", type: "text", readonly: true, value: o.url || "", "aria-describedby": o.id + "-note" });
+    var status = h("span", { class: "muted small", role: "status", "aria-live": "polite" });
+    var copy = h("button", { type: "button", class: "btn btn--secondary", text: "Copy link" });
+    function fallback() { field.focus(); field.select(); status.textContent = "Press Ctrl+C (or Cmd+C) to copy the selected link."; }
+    copy.addEventListener("click", function () {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(field.value).then(function () { status.textContent = "Copied"; field.select(); }, fallback);
+      } else { fallback(); }
+    });
+    var text = "Send this link to " + o.name + " by WhatsApp or in person. It works once and expires in " + o.expiry + "." + (o.emailQueued ? " We have also emailed it." : "");
+    var panel = h("section", { class: "panel", "aria-labelledby": o.id + "-h" },
+      h("h2", { id: o.id + "-h", text: o.heading }),
+      h("p", { id: o.id + "-note", text: text }),
+      h("p", { class: "muted small", text: "This link cannot be shown again." }),
+      h("label", { class: "sr-only", for: o.id + "-url", text: o.heading }), field,
+      h("div", { class: "form-actions" }, copy, status));
+    host.appendChild(panel);
+    linkPanelEl = panel; linkPanelPath = location.pathname;
+    field.focus(); field.select();
+    return panel;
+  };
   A.dl = function (pairs) { return h("dl", { class: "dl" }, pairs.filter(function (p) { return p[1] !== null && p[1] !== undefined && p[1] !== ""; }).map(function (p) { return [h("dt", { text: p[0] }), h("dd", {}, p[1])]; })); };
   A.pager = function (ctx, res, base) {
     var page = res.page, last = Math.max(1, Math.ceil(res.total / res.pageSize));
@@ -209,9 +237,18 @@
     if (url.origin !== location.origin || (url.pathname !== "/admin" && url.pathname.indexOf("/admin/") !== 0)) { return; }
     e.preventDefault();
     if (a.id === "help-link" && a.getAttribute("data-help")) { openDrawer(a.getAttribute("data-help")); return; }
+    if (!linkLeaveOk()) { return; }
     A.go(url.pathname + url.search);
   });
-  window.addEventListener("popstate", dispatch);
+  window.addEventListener("popstate", function () {
+    if (linkPanelPath && linkPanelEl && document.body.contains(linkPanelEl) && location.pathname !== linkPanelPath) {
+      if (!window.confirm(LINK_WARNING)) { history.pushState(null, "", linkPanelPath); return; }
+    }
+    dispatch();
+  });
+  window.addEventListener("beforeunload", function (e) {
+    if (linkPanelEl && document.body.contains(linkPanelEl)) { e.preventDefault(); e.returnValue = ""; }
+  });
   window.addEventListener("as:unauthenticated", function () { if (A.user) { A.user = null; AS.api.setCsrf(null); A.go("/admin/sign-in?next=" + encodeURIComponent(location.pathname), true); } });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") { closeDrawer(); } });
 

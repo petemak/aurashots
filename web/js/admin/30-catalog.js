@@ -175,9 +175,7 @@
 
   // ================= merchandise
   function availabilityOf(p) {
-    if (p.availability) { return p.availability; }
-    if (p.optionGroups && p.optionGroups.length) { return p.optionGroups.every(function (g) { return g.options.every(function (o) { return !o.inStock; }); }) ? "soldOut" : "inStock"; }
-    return "inStock";
+    return p.availability || "inStock";
   }
   A.route("/admin/merchandise", { id: "A10", title: "Merchandise" }, function (ctx) {
     ctx.main.appendChild(h("div", { class: "row" }, h("a", { class: "btn", href: "/admin/merchandise/new" }, AS.icon("plus", "icon--sm"), "Add an item")));

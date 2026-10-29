@@ -81,6 +81,12 @@
   [conn {:keys [hash user-id expires-at]}]
   (d/transact! conn [{:ptoken/hash hash :ptoken/userId user-id :ptoken/expiresAt expires-at :ptoken/used false}]))
 
+(defn invalidate-user-tokens!
+  "Marks every unused password token of `user-id` as used, so earlier links stop working."
+  [conn user-id]
+  (let [es (d/q '[:find [?e ...] :in $ ?u :where [?e :ptoken/userId ?u] [?e :ptoken/used false]] (d/db conn) user-id)]
+    (when (seq es) (d/transact! conn (mapv (fn [e] {:db/id e :ptoken/used true}) es)))))
+
 (defn get-token
   "Returns `{:userId :expiresAt :used}` for the token `hash`, or nil."
   [conn hash]

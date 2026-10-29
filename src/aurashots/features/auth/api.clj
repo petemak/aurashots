@@ -123,29 +123,48 @@
     (reset-link base-url (issue-token! conn pepper (:id user) now core/invitation-token-ttl))))
 
 (defn send-password-link!
-  "Issues a token for `user` and queues the invitation (when still pending) or reset email. `deps` has `:conn
-  :config :pepper :now`. Side effects: token and message writes."
-  [{:keys [conn config pepper now] :as deps} user]
-  (let [pending? (:invitationPending user)
+  "Issues a fresh token for `user` (earlier unused tokens of the user stop working) and returns
+  `{:kind \"invitation\"|\"reset\" :url :expires-at :email-queued}`. The email is queued only when SMTP is
+  configured. The raw token appears only in the returned URL; the database holds its keyed hash. `deps` has
+  `:conn :config :pepper :now`. Side effects: token and message writes."
+  [{:keys [conn config pepper now]} user]
+  (let [pending? (boolean (:invitationPending user))
         ttl (if pending? core/invitation-token-ttl core/reset-token-ttl)
+        expires-at (.plus ^java.time.Instant now ttl)
+        _ (store/invalidate-user-tokens! conn (:id user))
         raw (issue-token! conn pepper (:id user) now ttl)
-        {:keys [tx]} (notify/queue {:conn conn :config config :now now}
-                                   [{:template (if pending? :staffInvitation :passwordReset)
-                                     :to (:email user) :subject-id (:id user)
-                                     :vars {:name (:name user) :link (reset-link (:public-base-url config) raw)
-                                            :expires (core/expires-text (.plus ^java.time.Instant now ttl))}}])]
-    (store/transact! conn tx)
-    deps))
+        url (reset-link (:public-base-url config) raw)
+        email? (boolean (and (get-in config [:smtp :user]) (get-in config [:smtp :password])))]
+    (when email?
+      (let [{:keys [tx]} (notify/queue {:conn conn :config config :now now}
+                                       [{:template (if pending? :staffInvitation :passwordReset)
+                                         :to (:email user) :subject-id (:id user)
+                                         :vars {:name (:name user) :link url :expires (core/expires-text expires-at)}}])]
+        (store/transact! conn tx)))
+    {:kind (if pending? "invitation" "reset") :url url :expires-at expires-at :email-queued email?}))
 
 (defn create-staff!
-  "Creates a support user (invitation pending) and sends the invitation. Throws `conflict` for a duplicate email.
-  Returns the staff view."
+  "Creates a support user (invitation pending) and issues the invitation link. Throws `conflict` for a duplicate
+  email. Returns the staff view plus `:invitationUrl :invitationExpiresAt :emailQueued`."
   [{:keys [conn now] :as deps} {:keys [name email]}]
   (let [email (.toLowerCase ^String email)]
     (when (store/user-by-email conn email) (err/fail! :conflict "A staff member with that email already exists."))
-    (let [user (store/save-user! conn (core/new-user {:id (refs/new-id) :name name :email email :role :support} now))]
-      (send-password-link! deps user)
-      (core/staff-view user))))
+    (let [user (store/save-user! conn (core/new-user {:id (refs/new-id) :name name :email email :role :support} now))
+          {:keys [url expires-at email-queued]} (send-password-link! deps user)]
+      (assoc (core/staff-view user) :invitationUrl url :invitationExpiresAt expires-at :emailQueued email-queued))))
+
+(defn staff-link!
+  "Issues the invitation (pending member) or reset link for `user`; returns `{:kind :url :expiresAt :emailQueued}`."
+  [deps user]
+  (let [{:keys [kind url expires-at email-queued]} (send-password-link! deps user)]
+    {:kind kind :url url :expiresAt expires-at :emailQueued email-queued}))
+
+(defn owner-link!
+  "CLI: issues a one-time password reset link for the owner account. `deps` has `:conn :config :pepper :now`.
+  Returns the link map, or nil when no owner exists."
+  [{:keys [conn] :as deps}]
+  (when-let [owner (first (filter #(= :owner (:role %)) (store/list-users conn)))]
+    (send-password-link! deps (assoc owner :invitationPending false))))
 
 (defn forgot-password!
   "Sends a reset link when `email` belongs to an active user; does nothing otherwise (callers always answer 202)."

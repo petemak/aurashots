@@ -26,14 +26,18 @@
 (defn build-product
   "Builds the stored product map from validated admin `body`. `existing` is the current record or nil.
   `id`, `slug` and `now` (an Instant) are supplied by the caller for new products. `inStock` (the product-level
-  flag) defaults to true and is preserved on update."
+  flag) defaults to true. On update it is preserved, except that saving with at least one option ticked in stock
+  clears a stale `false` (the form's options are then the source of truth; `availability` still reports
+  sold out when an option group is fully out)."
   [body {:keys [id slug now existing]}]
   (-> (select-keys body [:name :category :description :details :priceRwf :isNew :featured :status :images])
       (assoc :optionGroups (ensure-option-ids (:optionGroups body))
              :id (or (:id existing) id)
              :slug (or (:slug existing) slug)
              :createdAt (or (:createdAt existing) now)
-             :inStock (if existing (:inStock existing true) true))))
+             :inStock (cond (not existing) true
+                            (some :inStock (mapcat :options (:optionGroups body))) true
+                            :else (:inStock existing true)))))
 
 (defn availability
   "Returns \"inStock\" or \"soldOut\". A product is sold out when its product-level flag is off or any option
@@ -70,14 +74,16 @@
     (sort-by #(- (.toEpochMilli ^java.time.Instant (:createdAt %))) products)))
 
 (defn set-availability
-  "Applies the quick stock toggle: with `option-id` flips that option; without it sets the product-level flag and
-  every option. Returns the updated product, or nil when `option-id` is unknown."
+  "Applies the quick stock toggle: with `option-id` flips that option (re-enabling an option also clears a stale
+  product-level `inStock false`); without it sets the product-level flag and every option. Returns the updated product, or nil when `option-id` is unknown."
   [product option-id in-stock?]
   (if option-id
     (let [found? (some #(= option-id (:id %)) (mapcat :options (:optionGroups product)))]
       (when found?
-        (update product :optionGroups
-                (fn [gs] (mapv (fn [g] (update g :options (fn [os] (mapv #(if (= option-id (:id %)) (assoc % :inStock in-stock?) %) os)))) gs)))))
+        (cond-> product
+          in-stock? (assoc :inStock true)
+          true (update :optionGroups
+                (fn [gs] (mapv (fn [g] (update g :options (fn [os] (mapv #(if (= option-id (:id %)) (assoc % :inStock in-stock?) %) os)))) gs))))))
     (-> product
         (assoc :inStock in-stock?)
         (update :optionGroups (fn [gs] (mapv (fn [g] (update g :options (fn [os] (mapv #(assoc % :inStock in-stock?) os)))) gs))))))
