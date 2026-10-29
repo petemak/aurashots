@@ -1,0 +1,211 @@
+/*
+ * Aura Shots design tokens: the single source of truth for how the site looks.
+ * Read visual-guide.md for the reason behind every value.
+ * Fonts are declared in assets/fonts/fonts.css (self-hosted, SIL OFL 1.1).
+ *
+ * Structure
+ *   1. Raw palette (do not use directly in components; use the semantic tokens)
+ *   2. Semantic colour tokens, dark theme (default) and light theme
+ *   3. Type, spacing, radius, shadow, motion, sizing
+ *
+ * Contrast (WCAG 2.1 AA) is verified in visual-guide.md. Rules that matter:
+ *   - Pink TEXT only on --ink-0 / --surface-1 (dark) or use --pink-ink on light.
+ *   - Pink FILLS carry Noir text, never Pearl.
+ */
+
+:root {
+  /* ---------- 1. Raw palette ---------- */
+  --noir: #0a0a0a;          /* brand black, page background */
+  --noir-1: #151115;        /* raised surface (cards, header) */
+  --noir-2: #201a1f;        /* higher surface (inputs, chips, menus) */
+  --noir-line: #3a3138;     /* decorative hairlines only (not for UI boundaries) */
+  --noir-edge: #8c8187;     /* UI boundaries: input borders, outlines (3:1+) */
+  --pearl: #f6f1ef;         /* brand off-white */
+  --pearl-2: #efe8e5;       /* light-theme raised surface */
+  --white: #ffffff;
+  --mist: #b8adb2;          /* secondary text on dark */
+  --umber: #5e5258;         /* secondary text on light */
+  --umber-edge: #7a6e74;    /* UI boundaries on light */
+
+  --aura-pink: #e0457b;     /* brand pink, as proposed in brand-brief.md (unchanged) */
+  --aura-pink-hover: #eb6b98;
+  --aura-pink-press: #f4c6d7;
+  --aura-pink-tint: #f4c6d7;
+  --aura-pink-ink: #b3205a; /* pink for text/fills on LIGHT surfaces (adjusted shade) */
+
+  --green: #4ade80;  --green-ink: #14703a;
+  --amber: #f5b942;  --amber-ink: #8a5a00;
+  --coral: #ff7b72;  --coral-ink: #b3261e;
+  --sky:   #7db8ff;  --sky-ink:   #1f5fa8;
+
+  /* ---------- 2a. Semantic colours, dark theme (default) ---------- */
+  color-scheme: dark;
+  --color-bg: var(--noir);
+  --color-surface: var(--noir-1);
+  --color-surface-raised: var(--noir-2);
+  --color-text: var(--pearl);
+  --color-text-muted: var(--mist);
+  --color-text-on-accent: var(--noir);       /* text on pink / semantic fills */
+  --color-border: var(--noir-line);          /* decorative */
+  --color-border-strong: var(--noir-edge);   /* form fields, outline buttons */
+
+  --color-primary: var(--aura-pink);         /* fills: buttons, selected chips */
+  --color-primary-hover: var(--aura-pink-hover);
+  --color-primary-press: var(--aura-pink-press);
+  --color-accent-text: var(--aura-pink);     /* links and highlights on dark */
+  --color-accent-text-hover: var(--aura-pink-hover);
+  --color-accent-tint: var(--aura-pink-tint);
+
+  --color-success: var(--green);
+  --color-warning: var(--amber);
+  --color-error: var(--coral);
+  --color-info: var(--sky);
+
+  --color-disabled-bg: #2a242a;
+  --color-disabled-text: #9a8f95;
+  --color-focus-ring: var(--pearl);
+  --color-overlay: rgb(10 10 10 / 0.72);
+  --gradient-hero-scrim: linear-gradient(to top, rgb(10 10 10 / 0.88) 0%, rgb(10 10 10 / 0.45) 45%, rgb(10 10 10 / 0) 100%);
+
+  /* ---------- Fonts ---------- */
+  --font-heading: "Cormorant Garamond", "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; /* booking references */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* ---------- 3. Type scale (rem; 1rem = 16px) ---------- */
+  --text-xs: 0.8125rem;   /* 13px: badges, captions, legal footnotes */
+  --text-sm: 0.9375rem;   /* 15px: hints, table text, admin secondary */
+  --text-base: 1.0625rem; /* 17px: body */
+  --text-lg: 1.25rem;     /* 20px: lead paragraphs, prices on cards */
+  --text-xl: 1.625rem;    /* 26px: h4 / card titles (heading font) */
+  --text-2xl: clamp(1.875rem, 1.5rem + 1.6vw, 2.5rem);   /* h3 */
+  --text-3xl: clamp(2.25rem, 1.7rem + 2.6vw, 3.5rem);    /* h2 */
+  --text-4xl: clamp(2.75rem, 1.9rem + 4.2vw, 5rem);      /* h1 / hero */
+  --leading-tight: 1.1;   /* display headings */
+  --leading-snug: 1.3;
+  --leading-body: 1.6;
+  --tracking-display: -0.01em;
+  --tracking-badge: 0.08em;
+  --tracking-eyebrow: 0.14em;
+  --measure: 66ch;        /* max line length for reading text */
+
+  /* ---------- Spacing (4px base) ---------- */
+  --space-0: 0;
+  --space-1: 0.25rem;  /* 4 */
+  --space-2: 0.5rem;   /* 8 */
+  --space-3: 0.75rem;  /* 12 */
+  --space-4: 1rem;     /* 16 */
+  --space-5: 1.5rem;   /* 24 */
+  --space-6: 2rem;     /* 32 */
+  --space-7: 3rem;     /* 48 */
+  --space-8: 4rem;     /* 64 */
+  --space-9: 6rem;     /* 96 */
+  --space-10: 8rem;    /* 128 section rhythm on desktop */
+  --gutter: var(--space-4);          /* page side padding, mobile */
+  --gutter-wide: var(--space-6);     /* page side padding, 960px and up */
+
+  /* ---------- Sizing ---------- */
+  --content-max: 1200px;
+  --reading-max: 44rem;
+  --tap-min: 48px;          /* every interactive control */
+  --tap-comfort: 56px;      /* primary call-to-action height */
+  --icon-sm: 20px;
+  --icon-md: 24px;
+  --icon-lg: 32px;
+  --icon-stroke: 1.5;
+  --bp-sm: 640px;           /* reference only: custom properties cannot be used in media queries */
+  --bp-md: 960px;
+  --bp-lg: 1200px;
+
+  /* ---------- Aspect ratios for imagery ---------- */
+  --ratio-portrait: 3 / 4;    /* portfolio masters and tiles */
+  --ratio-card: 4 / 5;        /* service and product cards */
+  --ratio-square: 1 / 1;      /* merchandise, thumbnails */
+  --ratio-hero: 16 / 9;       /* hero (21 / 9 allowed on wide screens) */
+  --ratio-og: 1200 / 630;     /* social sharing image */
+
+  /* ---------- Radius ---------- */
+  --radius-xs: 2px;    /* photo corners inside lightbox */
+  --radius-sm: 4px;    /* portfolio tiles, thumbnails */
+  --radius-md: 8px;    /* inputs, cards, panels */
+  --radius-lg: 16px;   /* dialogs, calendar, agreement panel */
+  --radius-pill: 999px;/* buttons, chips, badges */
+
+  /* ---------- Borders ---------- */
+  --border-hair: 1px solid var(--color-border);
+  --border-field: 1px solid var(--color-border-strong);
+  --border-field-width: 1px;
+  --border-error-width: 2px;
+  --focus-width: 3px;
+  --focus-offset: 3px;
+
+  /* ---------- Shadows (on dark, depth is mostly surface tone; the glow is the "aura") ---------- */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 8px 24px rgb(0 0 0 / 0.55);
+  --shadow-lg: 0 24px 64px rgb(0 0 0 / 0.65);
+  --shadow-aura: 0 0 0 1px rgb(224 69 123 / 0.55), 0 10px 36px rgb(224 69 123 / 0.28);
+  --shadow-inset-press: inset 0 2px 4px rgb(0 0 0 / 0.35);
+
+  /* ---------- Motion ---------- */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 400ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ---------- Z layers ---------- */
+  --z-header: 100;
+  --z-menu: 200;
+  --z-dialog: 300;
+  --z-toast: 400;
+}
+
+/* ---------- 2b. Light theme: admin screens, legal text, agreement panels, printed pages ---------- */
+:root[data-theme="light"],
+[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: var(--pearl);
+  --color-surface: var(--white);
+  --color-surface-raised: var(--pearl-2);
+  --color-text: var(--noir);
+  --color-text-muted: var(--umber);
+  --color-text-on-accent: var(--noir);
+  --color-border: #ddd3cf;
+  --color-border-strong: var(--umber-edge);
+
+  --color-primary: var(--aura-pink);          /* Noir text on it: 5.00:1 */
+  --color-primary-hover: var(--aura-pink-hover);
+  --color-primary-press: var(--aura-pink-press);
+  --color-accent-text: var(--aura-pink-ink);  /* links on light: 5.73:1 on Pearl */
+  --color-accent-text-hover: #8f1848;
+
+  --color-success: var(--green-ink);
+  --color-warning: var(--amber-ink);
+  --color-error: var(--coral-ink);
+  --color-info: var(--sky-ink);
+
+  --color-disabled-bg: #e4dcd9;
+  --color-disabled-text: #5e5258;
+  --color-focus-ring: var(--aura-pink-ink);
+  --color-overlay: rgb(10 10 10 / 0.6);
+
+  --shadow-sm: 0 1px 2px rgb(10 10 10 / 0.12);
+  --shadow-md: 0 8px 24px rgb(10 10 10 / 0.14);
+  --shadow-lg: 0 24px 64px rgb(10 10 10 / 0.2);
+}
+
+/* Respect the visitor's motion preference at token level. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+/* Larger gutters from tablet up (value only; layout belongs to the frontend). */
+@media (min-width: 960px) {
+  :root { --gutter: var(--gutter-wide); }
+}

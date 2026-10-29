@@ -62,3 +62,7 @@ public/js/
 .clj-kondo/imports/
 ssr/.clj-kondo/.cache/
 .#*
+
+# --- Aura Shots runtime and build output (architecture.md section 4) ---
+/data/
+/dist/

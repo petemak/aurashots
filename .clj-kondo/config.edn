@@ -15,4 +15,19 @@
    environ.core      {:message "environ is not allowed: use Aero with #env."}
    schema.core       {:message "Plumatic Schema is not allowed: use Malli."}
    next.jdbc         {:message "SQL databases are not allowed for application data: use Datalevin or Datomic."}
-   clojure.java.jdbc {:message "SQL databases are not allowed for application data: use Datalevin or Datomic."}}}}
+   clojure.java.jdbc {:message "SQL databases are not allowed for application data: use Datalevin or Datomic."}
+
+   ;; Ring and Reitit are not used: Pedestal is the HTTP server and router.
+   ;; ring.util.* helpers stay allowed, since Pedestal itself builds on ring-core.
+   ring.adapter.jetty9          {:message "Ring adapters are not allowed: use Pedestal."}
+   ring.middleware.defaults     {:message "Ring middleware is not used: use Pedestal interceptors."}
+   ring.middleware.params       {:message "Ring middleware is not used: use Pedestal interceptors."}
+   ring.middleware.json         {:message "Ring middleware is not used: use Pedestal interceptors."}
+   ring.middleware.session      {:message "Ring middleware is not used: use Pedestal interceptors."}
+   reitit.core                  {:message "Reitit is not allowed: use the Pedestal router."}
+   reitit.ring                  {:message "Reitit is not allowed: use the Pedestal router."}
+   reitit.http                  {:message "Reitit is not allowed: use the Pedestal router."}
+   reitit.coercion              {:message "Reitit is not allowed: use the Pedestal router."}
+   reitit.coercion.malli        {:message "Reitit is not allowed: use the Pedestal router and Malli directly."}
+   reitit.ring.coercion         {:message "Reitit is not allowed: use the Pedestal router."}
+   reitit.ring.middleware.muuntaja {:message "Reitit is not allowed: use the Pedestal router."}}}}
