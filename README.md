@@ -1,4 +1,4 @@
-# Zandy Touch Webshop Builder
+# Aura Shots Webshop Builder
 
 ## Introduction
 
@@ -24,11 +24,11 @@ The agents run in this order:
 
 ```
 brand-strategist -> ux-designer -> visual-designer -> architect (design)
-  -> frontend-cljs + backend-clojure (in parallel)
+  -> frontend-html + backend-clojure (in parallel)
   -> architect (review) -> qa -> deployment-engineer
 ```
 
-`engineering-standards.md` requires an HTML frontend for this case, so we use `frontend-html` and `backend-clojure`. `frontend-cljs` and `backend-node` are alternatives for other stacks.
+`engineering-standards.md` requires an HTML frontend for this rather simple case, so we use `frontend-html` and `backend-clojure`. `frontend-cljs` and `backend-node` are alternatives for other stacks.
 
 
 ### The agents
@@ -52,8 +52,6 @@ brand-strategist -> ux-designer -> visual-designer -> architect (design)
 ### Supporting files
 ```
 .
-├── .clj-kondo
-│   └── config.edn          # flags libraries that are not allowed
 ├── business-context.md
 ├── engineering-standards.md
 ├── README.md

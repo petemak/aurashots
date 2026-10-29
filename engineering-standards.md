@@ -79,9 +79,7 @@ When building ClojureScript frontends, use the following libraries:
 When building Clojure backends, use the following libraries:
 - `Integrant` (https://github.com/weavejester/integrant ) - for component management like HTTP server and database
 - `Aero` (https://github.com/juxt/aero ) - for managing application configuration using structured EDN files
-- `Ring` (https://github.com/ring-clojure/ring ) - for small to medium services with synchronous (request -> response) request handling
-- `Pedestal` (https://github.com/pedestal/pedestal ) - alternativ to Ring for more complex services with asynchronous requests 
-- `Reitit` ( https://github.com/metosin/reitit ) - for HTTP routing if Ring serves as HTTP server. Don't use this with Pedestal.
+- `Pedestal` (https://github.com/pedestal/pedestal ) - For HTTP routing and complex services with asynchronous requests 
 - `Malli` (https://github.com/metosin/malli ) - for schema validation 
 - `Cognitect test-runner` (https://github.com/cognitect-labs/test-runner ) - for discovering and running tests
 - `babashka` (https://babashka.org ) - for writing scripts in Clojure
@@ -149,4 +147,4 @@ for reviewers who did not write it. Ensure that:
   no micro-frontends
 - Guideline, may deviate with a stated reason: vertical-slice
   folder structure, the specific error shape, the date format,
-  the code documentation rules
+  the code documentation rules.

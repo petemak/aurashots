@@ -1,0 +1,18 @@
+;; Lint rules required by engineering-standards.md.
+{:linters
+ {;; Every public var needs a docstring ("Code documentation").
+  :missing-docstring {:level :warning}
+
+  ;; Libraries listed under "Not allowed" in engineering-standards.md.
+  :discouraged-namespace
+  {:level :error
+   reagent.core      {:message "Reagent is not allowed: use Replicant."}
+   re-frame.core     {:message "re-frame is not allowed."}
+   rum.core          {:message "Rum is not allowed: use Replicant."}
+   compojure.core    {:message "Compojure is not allowed: use Pedestal routing."}
+   ring.adapter.jetty {:message "ring-jetty is not allowed: use Pedestal."}
+   mount.core        {:message "Mount is not allowed: use Integrant."}
+   environ.core      {:message "environ is not allowed: use Aero with #env."}
+   schema.core       {:message "Plumatic Schema is not allowed: use Malli."}
+   next.jdbc         {:message "SQL databases are not allowed for application data: use Datalevin or Datomic."}
+   clojure.java.jdbc {:message "SQL databases are not allowed for application data: use Datalevin or Datomic."}}}}

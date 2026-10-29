@@ -70,9 +70,15 @@ Rules:
 - Fonts must be free to use and loadable with a fallback stack;
   prefer system fonts or self-hosted files over a runtime CDN.
   Name the license.
-- Logo and badges are simple geometric SVG: a monogram, a
-  wordmark, shapes. Never fake a photo or a complex
-  illustration; use a neutral labelled placeholder instead.
+- If business-context.md points to a real logo, it is the brand
+  mark: use it, or redraw that same design faithfully as SVG
+  when the supplied file is too small or not vector, following
+  any instructions business-context.md gives about the logo.
+  Never invent a different mark. Only when no logo is supplied,
+  make a simple geometric SVG: a monogram, a wordmark, shapes.
+- Badges are simple geometric SVG. Never fake a photo or a
+  complex illustration; use a neutral labelled placeholder
+  instead.
 - Never reference a random-photo service. List which product
   images the owner must supply, with the shot spec.
 - Do not write page HTML, page CSS or JavaScript, and do not
