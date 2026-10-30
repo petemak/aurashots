@@ -41,7 +41,7 @@
     AS.clear($("#svc-gallery")).appendChild(AS.ui.gallery(imgs, { ratio: "card" }));
     var actions = AS.clear($("#svc-actions"));
     if (s.priceRwf) {
-      actions.appendChild(h("div", { class: "row" }, AS.cards.sessionControl(s, { large: true }), h("a", { class: "btn btn--lg btn--secondary", href: "/contact" }, "Ask a question")));
+      actions.appendChild(h("div", { class: "btn-pair" }, AS.cards.sessionControl(s, { large: true }), h("a", { class: "btn btn--lg btn--secondary", href: "/contact" }, "Ask a question")));
     } else {
       actions.appendChild(h("p", { class: "alert alert--warning", text: "Currently unavailable" }));
     }

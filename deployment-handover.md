@@ -18,3 +18,13 @@ These are technical facts found while designing, not decisions. The binding requ
 - The application writes its own nightly snapshot to `BACKUP_DIR`; the host's job is copying it and `uploads/` off the machine and testing restore.
 - Deploys are stop-then-start (one process owns the database directory); schedule them outside opening hours.
 - Environment variable names are listed in architecture.md section 8.
+
+## Deployment engineer, 30 Oct 2026: decisions and open questions
+Hosting is decided: a dedicated OVH VPS-1 (monthly), staging and production on the one server, staging at https://vps-e7fdfda9.vps.ovh.net. Fly is not used. Details: deploy/DECISIONS.md, prices deploy/COSTS.md, operations deploy/ovh/RUNBOOK.md.
+
+Still open, to be answered before production (recommendation marked *):
+1. Domain: (a) Cloudflare Registrar about 10.46 USD per year, needs a card *; (b) Porkbun 11.08; (c) Spaceship about 9.98 renewal (unverified).
+2. DNS and CDN: Cloudflare free proxy in front of the site * or plain DNS. (With the proxy the server must trust two hops.)
+3. Off-site backup (required by the architecture before launch): (a) Cloudflare R2, free up to 10 GB, needs a payment method on the Cloudflare account and an API token *; (b) Backblaze B2; (c) Google Drive, no card.
+4. Email: a Gmail address and an app password, or leave email off for launch *.
+5. Staging review: open the staging site (login in the lead's report) and approve for production or list changes.

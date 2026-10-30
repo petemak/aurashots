@@ -42,6 +42,7 @@
   color-scheme: dark;
   --color-bg: var(--noir);
   --color-surface: var(--noir-1);
+  --maker-mark: #84cc16;      /* PJM credit badge in the footer (owner's choice, as on Zandy Touch); about 10:1 on the footer surface */
   --color-surface-raised: var(--noir-2);
   --color-text: var(--pearl);
   --color-text-muted: var(--mist);

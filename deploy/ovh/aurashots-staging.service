@@ -1,0 +1,35 @@
+[Unit]
+Description=Aura Shots STAGING (single JVM, embedded Datalevin)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aurashots
+Group=aurashots
+WorkingDirectory=/opt/aurashots/staging/current
+EnvironmentFile=/etc/aurashots/staging.env
+# Flags are those of scripts/backend/run.clj (authoritative). Only one process may open this DATA_DIR.
+ExecStart=/usr/bin/java -Xmx512m --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --enable-native-access=ALL-UNNAMED -jar aurashots.jar
+# JVM exits 143 on SIGTERM; it flushes the database on stop, allow up to 30 s.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+# Memory: local F40 peak was 817-881 MB RSS (includes mapped DB pages). Staging and prod together stay under 3 GB of 4 GB
+# RAM, leaving headroom for Caddy, the OS and page cache; swap (2 GB) absorbs bursts. MemoryHigh throttles first.
+MemoryHigh=900M
+MemoryMax=1100M
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/aurashots/staging
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LimitNOFILE=8192
+
+[Install]
+WantedBy=multi-user.target

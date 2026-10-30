@@ -1,0 +1,6 @@
+[Unit]
+Description=Aura Shots nightly backup copy and checks
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/aurashots-backup

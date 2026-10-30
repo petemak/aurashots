@@ -30,14 +30,14 @@ SEO title: "Aura Shots | Editorial Photography Sessions in Kigali". Search inten
 SEO title: "Photography Packages and Prices in Kigali | Aura Shots". Intent: "photography packages Kigali price", "couple photoshoot Kigali".
 
 1. **Page header** – title, one-line intro, note "All prices in RwF".
-2. **Package grid** – Purpose: browse. Content: one card per published service: image, name, short description, price, key facts line (edited pictures, delivery time), "View details", "Add to session basket". Layout: 2 to 3 column grid. Dynamic: service list.
+2. **Package grid** – Purpose: browse. Content: one card per published service: image, name, short description, price, key facts line (edited pictures, delivery time), "View details", "Add to basket". Layout: 2 to 3 column grid. Dynamic: service list.
 3. **What every session includes / policy note** – short reassurance block with no-refund note and link to P16.
 4. **Empty state** – if none published, show message and contact link.
 
 ### P3 Service detail `/services/{slug}`
 Title: "{Service name} – Photoshoot in Kigali | Aura Shots". Intent: "{service name} photoshoot Kigali".
 
-1. **Gallery and summary** – left: image gallery (main image plus thumbnails, keyboard accessible); right: name, price in RwF, short description, session length if set, button "Add to session basket" (turns into "In your basket – View basket" after adding), secondary "Ask a question" (to P14). Stacked on mobile with gallery first.
+1. **Gallery and summary** – left: image gallery (main image plus thumbnails, keyboard accessible); right: name, price in RwF, short description, session length if set, button "Add to basket" (turns into "In your basket" after adding), secondary "Ask a question" (to P14). Stacked on mobile with gallery first.
 2. **Description** – detailed description.
 3. **What's included** – structured list: number of edited pictures, number of videos, outfits, delivery time, locations, related merchandise (links to P6 items).
 4. **Conditions** – conditions text, no-refund notice, link to booking agreement preview (opens P17 text).

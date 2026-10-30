@@ -24,12 +24,12 @@
     function paint() {
       AS.clear(box);
       if (AS.store.sessions.has(svc.id)) {
-        box.appendChild(h("a", { class: "btn" + (opts.large ? " btn--lg" : ""), href: "/cart/sessions" }, AS.icon("success", "icon--sm"), "In your basket – View basket"));
+        box.appendChild(h("a", { class: "btn" + (opts.large ? " btn--lg" : ""), href: "/cart/sessions" }, AS.icon("success", "icon--sm"), "In your basket", h("span", { class: "sr-only", text: " – view basket" })));
       } else {
         box.appendChild(h("button", { type: "button", class: "btn" + (opts.large ? " btn--lg" : ""), onclick: function () {
           if (AS.store.sessions.all().length >= 10) { AS.toast("A session request can include up to 10 packages.", "warning"); return; }
           AS.store.sessions.add(svc); AS.toast(svc.name + " added to your session basket."); 
-        } }, AS.icon("session-basket", "icon--sm"), "Add to session basket"));
+        } }, AS.icon("session-basket", "icon--sm"), "Add to basket"));
       }
     }
     window.addEventListener("as:baskets", paint);

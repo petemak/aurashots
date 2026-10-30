@@ -40,11 +40,18 @@
 .site-footer a { color: var(--color-text); }
 .site-footer a:hover { color: var(--color-accent-text); }
 .footer-tagline { font-family: var(--font-heading); font-style: italic; font-weight: var(--weight-semibold); font-size: var(--text-xl); margin-bottom: var(--space-3); }
-.footer-social { display: flex; gap: var(--space-1); }
+.footer-social { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); list-style: none; padding: 0; margin: var(--space-3) 0 0; }
+.social-link { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--tap-min); color: var(--color-text); font-weight: var(--weight-semibold); text-decoration: none; }
+.social-link:hover { color: var(--color-accent-text); text-decoration: underline; }
 .footer-hours { font-size: var(--text-sm); }
 .footer-hours li { display: flex; justify-content: space-between; gap: var(--space-3); }
 .footer-note { margin-top: var(--space-6); padding-top: var(--space-4); border-top: var(--border-hair); display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); align-items: center; color: var(--color-text-muted); font-size: var(--text-sm); }
 .footer-note img { height: 1.75rem; width: auto; }
+/* PJM maker credit, same badge as the other PJM sites. */
+.site-footer__credit { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0 0 0 auto; }
+.maker-mark { flex: none; width: auto; height: 1.0625rem; color: var(--maker-mark); }
+/* Full-height tap target without making the footer line taller. */
+.maker-link { display: inline-flex; align-items: center; min-height: var(--tap-min); margin-block: calc((1.0625rem - var(--tap-min)) / 2); }
 .contact-line { display: flex; gap: var(--space-2); align-items: flex-start; }
 .contact-line .icon { margin-top: var(--space-1); color: var(--color-accent-text); }
 

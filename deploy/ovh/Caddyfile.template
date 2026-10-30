@@ -1,0 +1,33 @@
+# Caddy for the Aura Shots VPS. provision.sh replaces @@STAGING_HOST@@ and installs this as /etc/caddy/Caddyfile.
+# Caddy obtains and renews Let's Encrypt certificates by itself and redirects HTTP to HTTPS.
+#
+# Client IP: Caddy listens directly on the internet (one trusted hop). Its reverse_proxy replaces any
+# X-Forwarded-For sent by the visitor with the real connecting address and sets X-Forwarded-Proto/Host, so the
+# app's rate limiter must run with TRUSTED_PROXY_HOPS=1 (set in both env templates).
+# Do not add `trusted_proxies` until a CDN (Cloudflare) is put in front; see the comment in the production block.
+
+(app_common) {
+	encode zstd gzip
+	# Cache-Control and security headers come from the application; Caddy does not override them.
+}
+
+# Staging: separate service on port 8081, own data directory, APP_ENV=staging (robots Disallow /, noindex).
+@@STAGING_HOST@@ {
+	import app_common
+	reverse_proxy 127.0.0.1:8081
+}
+
+# Production: uncomment when the domain exists and its DNS A record points at this server.
+# If Cloudflare proxying is later switched on, add in the global block at the top:
+#   servers { trusted_proxies cloudflare_ips }   (needs the caddy-cloudflare-ip module) or a static list of
+# Cloudflare ranges, and set TRUSTED_PROXY_HOPS=2 in prod.env (client, then Cloudflare edge), then re-run
+# acceptance check 3 (11 enquiry POSTs, the 11th returns 429, log shows the visitor address).
+#
+# www.aura-shots.com {
+# 	redir https://aura-shots.com{uri} permanent
+# }
+#
+# aura-shots.com {
+# 	import app_common
+# 	reverse_proxy 127.0.0.1:8080
+# }

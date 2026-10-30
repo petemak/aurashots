@@ -1,0 +1,9 @@
+# /etc/aurashots/backup.conf (read by aurashots-backup). Off-site target is not chosen yet (owner decision, deferred
+# to production). Until then copies stay on this server, which is NOT a different failure domain.
+# When chosen, set a command that receives the archive directory as $1, e.g. an rclone or restic call:
+#   OFFSITE_CMD="rclone sync /var/backups/aurashots r2:aurashots-backups"
+OFFSITE_CMD=
+ENVIRONMENTS="staging prod"
+DISK_ALERT_PERCENT=80
+SNAPSHOT_MAX_AGE_HOURS=30
+KEEP_DAILY=14

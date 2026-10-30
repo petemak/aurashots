@@ -8,7 +8,7 @@ Who: a tourist or urban professional who found the site through Google.
 
 1. They land on **P1 Home** from a search for "photographer Kigali". They see the hero, tagline and two buttons. They click "Book a session".
 2. **P2 Services** shows the package cards with prices in RwF. They compare Single Session and Couple Session and click "View details" on one.
-3. **P3 Service detail** shows the gallery, price, what's included, conditions and the no-refund notice. They click "Add to session basket". The button changes to "In your basket – View basket" and the header basket icon shows 1. (Optional: they go back and add a second package.)
+3. **P3 Service detail** shows the gallery, price, what's included, conditions and the no-refund notice. They click "Add to basket". The button changes to "In your basket" and the header basket icon shows 1. (Optional: they go back and add a second package.)
 4. They click the basket icon, or "View basket". **P7 Session basket** lists their choice and total. A line reads "Payment after confirmation, by cash or mobile money". They click "Choose date and time".
 5. **P8 step 1**: a calendar opens. Blocked and past days are greyed and cannot be selected. They pick Saturday 14 November 2026, and start-time buttons appear; unavailable times are disabled. They pick 10:30 and see "Saturday, 14 November 2026 at 10:30. This is your preferred time. We will confirm it or suggest another." They click "Next".
 6. **P8 step 2**: they enter name, phone with country code, email, optional address or area, contact preference (WhatsApp), and notes. Errors appear next to the field in plain words. They click "Next".

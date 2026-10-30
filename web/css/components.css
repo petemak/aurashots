@@ -149,6 +149,18 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .counter { text-align: right; color: var(--color-text-muted); font-size: var(--text-sm); }
 .form-grid { display: grid; gap: 0 var(--space-5); }
 @media (min-width: 640px) { .form-grid--2 { grid-template-columns: 1fr 1fr; } }
+/* Side-by-side fields share their rows (label, hint, control, counter, error), so the inputs line up even when
+   only one of the two fields has a hint or shows an error. */
+@supports (grid-template-rows: subgrid) {
+  @media (min-width: 640px) {
+    .form-grid--2 > .field { display: grid; grid-template-rows: subgrid; grid-row: span 5; align-content: start; }
+    .form-grid--2 > .field > label { grid-row: 1; }
+    .form-grid--2 > .field > .field__hint { grid-row: 2; }
+    .form-grid--2 > .field > .input, .form-grid--2 > .field > .select, .form-grid--2 > .field > .textarea { grid-row: 3; align-self: start; }
+    .form-grid--2 > .field > .counter { grid-row: 4; }
+    .form-grid--2 > .field > .field__error { grid-row: 5; }
+  }
+}
 .hp { position: absolute; left: -100vw; width: 1px; height: 1px; overflow: hidden; }
 .check { display: flex; gap: var(--space-3); align-items: flex-start; min-height: var(--tap-min); padding-block: var(--space-2); }
 .check input { appearance: none; flex: none; width: var(--icon-md); height: var(--icon-md); margin: var(--space-1) 0 0; border: var(--border-field); border-width: var(--icon-stroke); border-radius: var(--radius-sm); background: var(--color-surface-raised); display: grid; place-content: center; cursor: pointer; }
@@ -196,7 +208,11 @@ fieldset.field { border: 0; padding: 0; min-width: 0; }
 .card__title a::after { content: ""; position: absolute; inset: 0; z-index: 0; }
 .card__facts { font-size: var(--text-sm); color: var(--color-text-muted); margin: 0; }
 .card__text { color: var(--color-text-muted); margin: 0; font-size: var(--text-sm); }
-.card__actions { position: relative; z-index: 1; margin-top: auto; padding-top: var(--space-3); display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.card__actions { position: relative; z-index: 1; margin-top: auto; padding-top: var(--space-3); }
+.card__actions .btn { padding-inline: var(--space-3); font-size: var(--text-sm); }
+/* Two actions of equal width, side by side when both fit and stacked when they do not, whatever their labels. */
+.btn-pair, .card__actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: var(--space-2); }
+.btn-pair > .btn, .btn-pair > .session-control > .btn, .card__actions > .btn, .card__actions > .session-control > .btn { width: 100%; white-space: nowrap; }
 .card--muted { opacity: 0.8; }
 
 /* ---------- alerts, toasts ---------- */

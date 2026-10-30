@@ -106,12 +106,20 @@
       AS.clear(hours);
       AS.fmt.hours(info.openingHours).forEach(function (r) { hours.appendChild(h("li", {}, h("span", { text: r.days }), h("span", { text: r.range }))); });
     }
+    // "@handle" from a profile URL such as https://www.instagram.com/aura_shxts/ or https://www.tiktok.com/@name; null if none.
+    function socialHandle(url) {
+      var m = /^https?:\/\/[^/]+\/@?([A-Za-z0-9._]+)\/?(?:[?#].*)?$/.exec(url);
+      return m ? "@" + m[1] : null;
+    }
     var soc = $("#footer-social");
     if (soc && info.social) {
       AS.clear(soc);
       [["instagram", "Instagram"], ["tiktok", "TikTok"], ["facebook", "Facebook"]].forEach(function (s) {
-        if (info.social[s[0]]) {
-          soc.appendChild(h("li", {}, h("a", { class: "icon-btn", href: info.social[s[0]], rel: "noopener", "aria-label": s[1] + " (opens in a new tab)", target: "_blank" }, AS.icon(s[0]))));
+        var url = info.social[s[0]];
+        if (url) {
+          var label = s[0] === "facebook" ? s[1] : (socialHandle(url) || s[1]);
+          soc.appendChild(h("li", {}, h("a", { class: "social-link", href: url, rel: "noopener", "aria-label": s[1] + " " + label + " (opens in a new tab)", target: "_blank" },
+            AS.icon(s[0]), h("span", { text: label }))));
         }
       });
     }
